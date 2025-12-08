@@ -5,3 +5,5 @@ __pycache__
 1.2
 2.0/s*
 models
+*.zip
+test.cupt
