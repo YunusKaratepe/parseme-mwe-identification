@@ -13,8 +13,21 @@ Multilingual multiword expression (MWE) identification system using BERT-based t
 ## ⚡ Quick Start
 
 ### Install Dependencies
+
+**With CUDA (GPU) - Recommended:**
+```bash
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+pip install transformers numpy tqdm scikit-learn
+```
+
+**CPU Only:**
 ```bash
 pip install torch transformers numpy tqdm scikit-learn
+```
+
+**Verify CUDA:**
+```bash
+python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
 
 ### Train Single Language
