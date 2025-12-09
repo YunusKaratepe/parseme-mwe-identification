@@ -131,6 +131,8 @@ def predict_cupt_file(
     
     with open(input_file, 'r', encoding='utf-8') as f:
         current_tokens = []
+        current_pos_tags = []
+        current_pos_tags = []
         
         for line in f:
             line = line.rstrip('\n')
@@ -143,9 +145,11 @@ def predict_cupt_file(
             if not line.strip():
                 if current_tokens:
                     # Predict for this sentence (returns bio_tags and categories)
-                    pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device)
+                    pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device, current_pos_tags, pos_to_id, use_pos)
                     predictions_by_sentence.append((pred_tags, pred_cats))
                     current_tokens = []
+                    current_pos_tags = []
+                    current_pos_tags = []
                 else:
                     predictions_by_sentence.append([])
                 continue
@@ -162,7 +166,9 @@ def predict_cupt_file(
                 continue
             
             form = parts[1]
+            pos_tag = parts[3]  # UPOS column
             current_tokens.append(form)
+            current_pos_tags.append(pos_tag)
         
         # Don't forget last sentence
         if current_tokens:

@@ -228,7 +228,10 @@ def predict_mwe_tags(
     tokens: List[str],
     id_to_label: Dict[int, str],
     id_to_category: Dict[int, str],
-    device: torch.device
+    device: torch.device,
+    pos_tags: List[str] = None,
+    pos_to_id: Dict[str, int] = None,
+    use_pos: bool = False
 ) -> Tuple[List[str], List[str]]:
     """
     Predict MWE tags and categories for a sentence
@@ -246,18 +249,25 @@ def predict_mwe_tags(
     """
     model.eval()
     
-    # Create dummy labels for tokenization
+    # Create dummy labels and categories for tokenization
     dummy_labels = ['O'] * len(tokens)
+    dummy_categories = ['VID'] * len(tokens)
     label_to_id = {'O': 0, 'B-MWE': 1, 'I-MWE': 2}
+    category_to_id = {'VID': 0}  # Dummy category
     
     # Tokenize
-    tokenized = tokenizer.tokenize_and_align_labels(tokens, dummy_labels, label_to_id)
+    tokenized = tokenizer.tokenize_and_align_labels(
+        tokens, dummy_labels, label_to_id,
+        dummy_categories, category_to_id,
+        pos_tags, pos_to_id
+    )
     
     input_ids = tokenized['input_ids'].to(device)
     attention_mask = tokenized['attention_mask'].to(device)
+    pos_ids = tokenized['pos_ids'].to(device)
     
     with torch.no_grad():
-        outputs = model(input_ids, attention_mask)
+        outputs = model(input_ids, attention_mask, pos_ids=pos_ids)
         bio_predictions = torch.argmax(outputs['bio_logits'], dim=-1)
         category_predictions = torch.argmax(outputs['category_logits'], dim=-1)
     
