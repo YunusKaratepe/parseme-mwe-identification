@@ -195,6 +195,8 @@ def train_mwe_model(
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
+    print(f"Output directory: {output_dir}")
+    print(f"Output directory exists: {os.path.exists(output_dir)}")
     
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
