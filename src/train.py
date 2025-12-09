@@ -87,6 +87,9 @@ def compute_metrics(predictions: List[List[str]], references: List[List[str]]) -
     }
 
 
+
+
+
 def evaluate_model(model, dataloader, id_to_label, id_to_category, device):
     """Evaluate model on validation set"""
     model.eval()
@@ -296,7 +299,7 @@ def train_mwe_model(
     print(f"Batch size: {batch_size}")
     print(f"Learning rate: {learning_rate}\n")
     
-    best_f1 = 0
+    best_f1 = -1  # Initialize to -1 so first epoch always saves
     training_history = []
     
     for epoch in range(epochs):
@@ -349,7 +352,8 @@ def train_mwe_model(
             'val_loss': val_metrics['loss'],
             'val_precision': val_metrics['precision'],
             'val_recall': val_metrics['recall'],
-            'val_f1': val_metrics['f1']
+            'val_f1': val_metrics['f1'],
+            'val_category_accuracy': val_metrics['category_accuracy']
         })
         
         # Save best model
@@ -378,16 +382,20 @@ def train_mwe_model(
     with open(history_path, 'w') as f:
         json.dump(training_history, f, indent=2)
     
-    # Load the best model for final test evaluation
-    print("\nLoading best model for test evaluation...")
+    # Load the best model for final test evaluation (if it exists)
     model_path = os.path.join(output_dir, 'best_model.pt')
-    checkpoint = torch.load(model_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state_dict'])
+    if os.path.exists(model_path):
+        print("\nLoading best model for test evaluation...")
+        checkpoint = torch.load(model_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print("Evaluating on test set...")
+    else:
+        print("\n⚠️  Warning: No model was saved (validation F1 never improved)")
+        print("Evaluating on test set with final epoch model...")
     
-    # Final evaluation on test set with best model
-    print("Evaluating on test set...")
+    # Final evaluation on test set
     test_metrics = evaluate_model(model, test_dataloader, id_to_label, id_to_category, device)
-    print(f"\nFinal Test Results (using best model from validation):")
+    print(f"\nFinal Test Results:")
     print(f"  Test Precision: {test_metrics['precision']:.4f}")
     print(f"  Test Recall: {test_metrics['recall']:.4f}")
     print(f"  Test F1: {test_metrics['f1']:.4f}")
@@ -399,6 +407,7 @@ def train_mwe_model(
         'test_recall': test_metrics['recall'],
         'test_f1': test_metrics['f1'],
         'test_loss': test_metrics['loss'],
+        'test_category_accuracy': test_metrics['category_accuracy'],
         'best_val_f1': best_f1
     }
     test_path = os.path.join(output_dir, 'test_results.json')
@@ -407,6 +416,7 @@ def train_mwe_model(
     
     print("\nTraining completed!")
     print(f"Best Validation F1 score: {best_f1:.4f}")
+    print(f"Test Category Accuracy: {test_metrics['category_accuracy']:.4f}")
     print(f"Model saved to: {output_dir}")
     
     return model, best_f1

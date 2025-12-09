@@ -33,29 +33,39 @@ def print_training_summary(output_dir='models/FR'):
         for entry in history:
             epoch = entry['epoch']
             train_loss = entry['train_loss']
-            dev_loss = entry['dev_loss']
-            precision = entry['dev_precision']
-            recall = entry['dev_recall']
-            f1 = entry['dev_f1']
+            dev_loss = entry.get('dev_loss', entry.get('val_loss', 0))
+            precision = entry.get('dev_precision', entry.get('val_precision', 0))
+            recall = entry.get('dev_recall', entry.get('val_recall', 0))
+            f1 = entry.get('dev_f1', entry.get('val_f1', 0))
+            cat_acc = entry.get('val_category_accuracy', entry.get('dev_category_accuracy'))
             
             print(f"Epoch {epoch}:")
-            print(f"  Training Loss:   {train_loss:.4f}")
-            print(f"  Dev Loss:        {dev_loss:.4f}")
-            print(f"  Dev Precision:   {precision:.4f} ({precision*100:.2f}%)")
-            print(f"  Dev Recall:      {recall:.4f} ({recall*100:.2f}%)")
-            print(f"  Dev F1 Score:    {f1:.4f} ({f1*100:.2f}%)")
+            print(f"  Training Loss:      {train_loss:.4f}")
+            print(f"  Dev Loss:           {dev_loss:.4f}")
+            print(f"  Dev Precision:      {precision:.4f} ({precision*100:.2f}%)")
+            print(f"  Dev Recall:         {recall:.4f} ({recall*100:.2f}%)")
+            print(f"  Dev F1 Score:       {f1:.4f} ({f1*100:.2f}%)")
+            if cat_acc is not None:
+                print(f"  Category Accuracy:  {cat_acc:.4f} ({cat_acc*100:.2f}%)")
             print()
         
         # Best results
-        best_epoch = max(history, key=lambda x: x['dev_f1'])
+        best_epoch = max(history, key=lambda x: x.get('dev_f1', x.get('val_f1', 0)))
         print("=" * 70)
         print("BEST RESULTS")
         print("=" * 70)
         print()
+        f1_key = 'dev_f1' if 'dev_f1' in best_epoch else 'val_f1'
+        prec_key = 'dev_precision' if 'dev_precision' in best_epoch else 'val_precision'
+        rec_key = 'dev_recall' if 'dev_recall' in best_epoch else 'val_recall'
+        cat_key = 'val_category_accuracy' if 'val_category_accuracy' in best_epoch else 'dev_category_accuracy'
+        
         print(f"Best epoch: {best_epoch['epoch']}")
-        print(f"Best F1 Score: {best_epoch['dev_f1']:.4f} ({best_epoch['dev_f1']*100:.2f}%)")
-        print(f"Precision: {best_epoch['dev_precision']:.4f}")
-        print(f"Recall: {best_epoch['dev_recall']:.4f}")
+        print(f"Best F1 Score: {best_epoch[f1_key]:.4f} ({best_epoch[f1_key]*100:.2f}%)")
+        print(f"Precision: {best_epoch[prec_key]:.4f}")
+        print(f"Recall: {best_epoch[rec_key]:.4f}")
+        if cat_key in best_epoch:
+            print(f"Category Accuracy: {best_epoch[cat_key]:.4f} ({best_epoch[cat_key]*100:.2f}%)")
         print()
         
     else:
@@ -95,14 +105,32 @@ def print_training_summary(output_dir='models/FR'):
         print(f"✗ Predictions not found: {pred_file}")
     print()
     
+    # Check for test results
+    test_results_file = os.path.join(output_dir, 'test_results.json')
+    if os.path.exists(test_results_file):
+        with open(test_results_file, 'r') as f:
+            test_results = json.load(f)
+        
+        print("=" * 70)
+        print("TEST SET RESULTS")
+        print("=" * 70)
+        print()
+        print(f"Test Precision:      {test_results.get('test_precision', 0):.4f}")
+        print(f"Test Recall:         {test_results.get('test_recall', 0):.4f}")
+        print(f"Test F1 Score:       {test_results.get('test_f1', 0):.4f}")
+        if 'test_category_accuracy' in test_results:
+            print(f"Category Accuracy:   {test_results['test_category_accuracy']:.4f} ({test_results['test_category_accuracy']*100:.2f}%)")
+        print()
+    
     print("=" * 70)
     print("MODEL INFORMATION")
     print("=" * 70)
     print()
-    print("Architecture: Transformer-based token classification")
+    print("Architecture: Multi-task Transformer-based classification")
     print("Base Model: bert-base-multilingual-cased")
-    print("Task: Sequence labeling with BIO tagging")
-    print("Labels: O (outside), B-MWE (begin), I-MWE (inside)")
+    print("Tasks:")
+    print("  1. BIO tagging: O (outside), B-MWE (begin), I-MWE (inside)")
+    print("  2. Category classification: VID, LVC.full, NID, AdpID, etc.")
     print()
     
     print("=" * 70)
