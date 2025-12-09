@@ -100,6 +100,12 @@ def predict_cupt_file(
     id_to_label = {v: k for k, v in label_to_id.items()}
     id_to_category = {v: k for k, v in category_to_id.items()}
     
+    # Handle invalid model paths (e.g., Colab paths that don't exist locally)
+    if not os.path.exists(model_name) and '/' in model_name and not model_name.startswith('bert-'):
+        print(f"WARNING: Model path '{model_name}' not found locally.")
+        print(f"         Falling back to 'bert-base-multilingual-cased'")
+        model_name = 'bert-base-multilingual-cased'
+    
     # Initialize model
     model = MWEIdentificationModel(
         model_name, 
