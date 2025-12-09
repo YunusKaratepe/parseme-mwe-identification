@@ -7,3 +7,4 @@ __pycache__
 models
 *.zip
 test.cupt
+test.system.cupt

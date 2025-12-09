@@ -9,6 +9,18 @@ from pathlib import Path
 import subprocess
 
 
+def get_all_available_languages(base_data_dir):
+    """Get all available languages from the data directory"""
+    all_langs = []
+    if os.path.exists(base_data_dir):
+        for item in os.listdir(base_data_dir):
+            item_path = os.path.join(base_data_dir, item)
+            test_file = os.path.join(item_path, 'test.blind.cupt')
+            if os.path.isdir(item_path) and os.path.exists(test_file):
+                all_langs.append(item)
+    return sorted(all_langs)
+
+
 def get_languages_from_model_name(model_path):
     """Extract language codes from model directory name"""
     model_dir = Path(model_path).parent.name
@@ -41,7 +53,7 @@ def generate_predictions(model_path, languages, base_data_dir, output_dir):
     
     for lang in languages:
         input_file = os.path.join(base_data_dir, lang, 'test.blind.cupt')
-        output_file = os.path.join(output_dir, lang, 'test.cupt')
+        output_file = os.path.join(output_dir, lang, 'test.system.cupt')
         
         # Check if input file exists
         if not os.path.exists(input_file):
@@ -96,26 +108,10 @@ def create_submission_zip(predictions, output_zip, model_name):
     
     with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for lang, filepath in predictions:
-            # Add file with structure: LANG/test.cupt
-            arcname = f"{lang}/test.cupt"
+            # Add file with structure: LANG/test.system.cupt
+            arcname = f"{lang}/test.system.cupt"
             zipf.write(filepath, arcname)
-            print(f"✅ Added {lang}/test.cupt")
-        
-        # Add README with metadata
-        readme_content = f"""PARSEME 2.0 Shared Task - Subtask 1 Submission
-===============================================
-
-Model: {model_name}
-Languages: {', '.join([lang for lang, _ in predictions])}
-Number of files: {len(predictions)}
-
-Files included:
-"""
-        for lang, _ in predictions:
-            readme_content += f"  - {lang}/test.cupt\n"
-        
-        zipf.writestr('README.txt', readme_content)
-        print(f"✅ Added README.txt")
+            print(f"✅ Added {lang}/test.system.cupt")
     
     print(f"\n{'=' * 80}")
     print(f"✅ Submission created: {output_zip}")
@@ -133,9 +129,9 @@ def main():
         help='Path to model checkpoint (e.g., models/multilingual_PL+FR+EL/best_model.pt)'
     )
     parser.add_argument(
-        '--languages',
+        '--lang',
         nargs='+',
-        help='Language codes to process (e.g., PL FR EL). If not specified, extracts from model name.'
+        help='Language codes to process (e.g., PL FR EL) or "all" for all available languages. If not specified, extracts from model name.'
     )
     parser.add_argument(
         '--data-dir',
@@ -166,13 +162,23 @@ def main():
         sys.exit(1)
     
     # Get languages
-    if args.languages:
-        languages = args.languages
+    if args.lang:
+        # Check if user specified "all"
+        if len(args.lang) == 1 and args.lang[0].lower() == 'all':
+            languages = get_all_available_languages(args.data_dir)
+            if not languages:
+                print(f"❌ ERROR: No languages found in {args.data_dir}")
+                sys.exit(1)
+            print(f"Found {len(languages)} available languages: {', '.join(languages)}")
+        else:
+            # User specified specific languages
+            languages = args.lang
     else:
+        # Auto-detect from model name
         languages = get_languages_from_model_name(args.model)
         if not languages:
             print("❌ ERROR: Could not extract languages from model name.")
-            print("   Please specify languages with --languages PL FR EL ...")
+            print("   Please specify languages with --lang PL FR EL or --lang all")
             sys.exit(1)
     
     # Get model name for metadata
