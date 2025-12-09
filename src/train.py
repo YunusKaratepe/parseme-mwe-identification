@@ -419,6 +419,38 @@ def train_mwe_model(
     with open(history_path, 'w') as f:
         json.dump(training_history, f, indent=2)
     
+    # Save training info
+    # Extract language codes from train_file paths
+    train_file_list = [tf.strip() for tf in train_file.split(',')]
+    languages = []
+    for tf in train_file_list:
+        # Extract language code from path like "2.0/subtask1/FR/train.cupt"
+        parts = tf.split('/')
+        if len(parts) >= 3:
+            lang = parts[-2]  # Get parent directory name
+            if lang not in languages:
+                languages.append(lang)
+    
+    training_info = {
+        'languages': languages,
+        'sample_ratio': sample_ratio,
+        'epochs': epochs,
+        'lr': learning_rate,
+        'batch_size': batch_size,
+        'use_pos': use_pos,
+        'model_name': model_name,
+        'best_f1': best_f1,
+        'num_labels': len(label_to_id),
+        'num_categories': len(category_to_id),
+        'seed': seed,
+        'max_length': max_length
+    }
+    
+    info_path = os.path.join(output_dir, 'info.json')
+    with open(info_path, 'w') as f:
+        json.dump(training_info, f, indent=2)
+    print(f"✓ Training info saved to: {info_path}")
+    
     # Load the best model for final test evaluation (if it exists)
     model_path = os.path.join(output_dir, 'best_model.pt')
     
