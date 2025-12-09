@@ -27,7 +27,7 @@ def print_options():
     print()
 
 
-def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False):
+def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, output_base='models'):
     """Train model on specified language(s)"""
     # Handle both single language string and list of languages
     if isinstance(languages, str):
@@ -70,7 +70,7 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         
         # Create output directory for multilingual model
         lang_code = '+'.join([lang for lang in languages if lang not in missing_languages])
-        output_dir = f"models/multilingual_{lang_code}"
+        output_dir = f"{output_base}/multilingual_{lang_code}"
         
         # Join files with comma separator for train.py
         train_files_str = ','.join(train_files)
@@ -100,7 +100,7 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
             
             train_file = f"2.0/subtask1/{language}/train.cupt"
             dev_file = f"2.0/subtask1/{language}/dev.cupt"
-            output_dir = f"models/{language}"
+            output_dir = f"{output_base}/{language}"
             
             if not os.path.exists(train_file):
                 print(f"❌ Error: Training file not found: {train_file}")
@@ -264,6 +264,8 @@ Available languages:
                        help='Train single multilingual model on all specified languages combined')
     parser.add_argument('--pos', action='store_true',
                        help='Enable POS tag feature injection for improved performance')
+    parser.add_argument('--output', type=str, default='models',
+                       help='Base output directory for saving models (default: models)')
     parser.add_argument('--examples', type=int, default=10,
                        help='Number of examples to visualize (default: 10)')
     
@@ -272,7 +274,7 @@ Available languages:
     print_banner()
     
     if args.command == 'train':
-        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos)
+        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.output)
     elif args.command == 'predict':
         # For predict, visualize, summary - use first language if multiple specified
         language = args.languages[0] if args.languages else 'FR'
