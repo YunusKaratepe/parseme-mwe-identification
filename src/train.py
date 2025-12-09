@@ -19,12 +19,14 @@ from model import MWEIdentificationModel, MWETokenizer
 
 
 class MWEDataset(Dataset):
-    """PyTorch dataset for MWE identification"""
+    """PyTorch dataset for MWE identification with categories"""
     
-    def __init__(self, sentences: List[Dict], tokenizer: MWETokenizer, label_to_id: Dict[str, int], max_length: int = 512):
+    def __init__(self, sentences: List[Dict], tokenizer: MWETokenizer, label_to_id: Dict[str, int], 
+                 category_to_id: Dict[str, int], max_length: int = 512):
         self.sentences = sentences
         self.tokenizer = tokenizer
         self.label_to_id = label_to_id
+        self.category_to_id = category_to_id
         self.max_length = max_length
         
     def __len__(self):
@@ -34,16 +36,18 @@ class MWEDataset(Dataset):
         sentence = self.sentences[idx]
         tokens = sentence['tokens']
         labels = sentence['mwe_tags']
+        categories = sentence['mwe_categories']
         
         # Tokenize and align labels
         tokenized = self.tokenizer.tokenize_and_align_labels(
-            tokens, labels, self.label_to_id, self.max_length
+            tokens, labels, self.label_to_id, categories, self.category_to_id, self.max_length
         )
         
         return {
             'input_ids': tokenized['input_ids'].squeeze(0),
             'attention_mask': tokenized['attention_mask'].squeeze(0),
-            'labels': tokenized['labels'].squeeze(0)
+            'labels': tokenized['labels'].squeeze(0),
+            'category_labels': tokenized['category_labels'].squeeze(0)
         }
 
 
@@ -83,12 +87,14 @@ def compute_metrics(predictions: List[List[str]], references: List[List[str]]) -
     }
 
 
-def evaluate_model(model, dataloader, id_to_label, device):
+def evaluate_model(model, dataloader, id_to_label, id_to_category, device):
     """Evaluate model on validation set"""
     model.eval()
     
     all_predictions = []
     all_references = []
+    all_category_predictions = []
+    all_category_references = []
     total_loss = 0
     num_batches = 0
     
@@ -97,31 +103,52 @@ def evaluate_model(model, dataloader, id_to_label, device):
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
+            category_labels = batch['category_labels'].to(device)
             
-            outputs = model(input_ids, attention_mask, labels)
+            outputs = model(input_ids, attention_mask, labels, category_labels)
             
             if outputs['loss'] is not None:
                 total_loss += outputs['loss'].item()
                 num_batches += 1
             
-            predictions = torch.argmax(outputs['logits'], dim=-1)
+            bio_predictions = torch.argmax(outputs['bio_logits'], dim=-1)
+            category_predictions = torch.argmax(outputs['category_logits'], dim=-1)
             
             # Convert to labels (skip padding)
-            for i in range(predictions.shape[0]):
+            for i in range(bio_predictions.shape[0]):
                 pred_tags = []
                 ref_tags = []
+                pred_cats = []
+                ref_cats = []
                 
-                for j in range(predictions.shape[1]):
+                for j in range(bio_predictions.shape[1]):
                     if labels[i, j] != -100:
-                        pred_tags.append(id_to_label[predictions[i, j].item()])
+                        pred_tags.append(id_to_label[bio_predictions[i, j].item()])
                         ref_tags.append(id_to_label[labels[i, j].item()])
+                        pred_cats.append(id_to_category[category_predictions[i, j].item()])
+                        ref_cats.append(id_to_category[category_labels[i, j].item()])
                 
                 all_predictions.append(pred_tags)
                 all_references.append(ref_tags)
+                all_category_predictions.append(pred_cats)
+                all_category_references.append(ref_cats)
     
     avg_loss = total_loss / num_batches if num_batches > 0 else 0
     metrics = compute_metrics(all_predictions, all_references)
+    
+    # Compute category accuracy (only for MWE tokens, not O)
+    category_correct = 0
+    category_total = 0
+    for pred_cats, ref_cats, ref_tags in zip(all_category_predictions, all_category_references, all_references):
+        for pc, rc, rt in zip(pred_cats, ref_cats, ref_tags):
+            if rt != 'O':  # Only count MWE tokens
+                category_total += 1
+                if pc == rc:
+                    category_correct += 1
+    
+    category_acc = category_correct / category_total if category_total > 0 else 0
     metrics['loss'] = avg_loss
+    metrics['category_accuracy'] = category_acc
     
     return metrics
 
@@ -234,16 +261,21 @@ def train_mwe_model(
     print(f"\nLabels: {label_to_id}")
     print(f"MWE categories found: {sorted(data_loader.mwe_categories)}")
     
+    # Get category mappings
+    category_to_id = data_loader.get_category_mapping()
+    id_to_category = {v: k for k, v in category_to_id.items()}
+    print(f"\nCategory labels ({len(category_to_id)}): {list(category_to_id.keys())[:10]}...")  # Show first 10
+    
     # Initialize tokenizer and model
     print(f"\nInitializing model: {model_name}")
     tokenizer = MWETokenizer(model_name)
-    model = MWEIdentificationModel(model_name, num_labels=len(label_to_id))
+    model = MWEIdentificationModel(model_name, num_labels=len(label_to_id), num_categories=len(category_to_id))
     model.to(device)
     
     # Create datasets
-    train_dataset = MWEDataset(train_sentences, tokenizer, label_to_id, max_length)
-    val_dataset = MWEDataset(val_sentences, tokenizer, label_to_id, max_length)
-    test_dataset = MWEDataset(test_sentences, tokenizer, label_to_id, max_length)
+    train_dataset = MWEDataset(train_sentences, tokenizer, label_to_id, category_to_id, max_length)
+    val_dataset = MWEDataset(val_sentences, tokenizer, label_to_id, category_to_id, max_length)
+    test_dataset = MWEDataset(test_sentences, tokenizer, label_to_id, category_to_id, max_length)
     
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
@@ -280,9 +312,10 @@ def train_mwe_model(
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
+            category_labels = batch['category_labels'].to(device)
             
             # Forward pass
-            outputs = model(input_ids, attention_mask, labels)
+            outputs = model(input_ids, attention_mask, labels, category_labels)
             loss = outputs['loss']
             
             # Backward pass
@@ -299,7 +332,7 @@ def train_mwe_model(
         
         # Evaluation on validation set
         print("\nEvaluating on validation set...")
-        val_metrics = evaluate_model(model, val_dataloader, id_to_label, device)
+        val_metrics = evaluate_model(model, val_dataloader, id_to_label, id_to_category, device)
         
         print(f"\nEpoch {epoch + 1} Results:")
         print(f"  Train Loss: {avg_train_loss:.4f}")
@@ -307,6 +340,7 @@ def train_mwe_model(
         print(f"  Val Precision: {val_metrics['precision']:.4f}")
         print(f"  Val Recall: {val_metrics['recall']:.4f}")
         print(f"  Val F1: {val_metrics['f1']:.4f}")
+        print(f"  Val Category Acc: {val_metrics['category_accuracy']:.4f}")
         
         # Save training history
         training_history.append({
@@ -330,6 +364,7 @@ def train_mwe_model(
                 'optimizer_state_dict': optimizer.state_dict(),
                 'best_f1': best_f1,
                 'label_to_id': label_to_id,
+                'category_to_id': category_to_id,
                 'model_name': model_name
             }, model_path)
             
@@ -351,11 +386,12 @@ def train_mwe_model(
     
     # Final evaluation on test set with best model
     print("Evaluating on test set...")
-    test_metrics = evaluate_model(model, test_dataloader, id_to_label, device)
+    test_metrics = evaluate_model(model, test_dataloader, id_to_label, id_to_category, device)
     print(f"\nFinal Test Results (using best model from validation):")
     print(f"  Test Precision: {test_metrics['precision']:.4f}")
     print(f"  Test Recall: {test_metrics['recall']:.4f}")
     print(f"  Test F1: {test_metrics['f1']:.4f}")
+    print(f"  Test Category Acc: {test_metrics['category_accuracy']:.4f}")
     
     # Save test results
     test_results = {

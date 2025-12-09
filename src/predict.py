@@ -76,10 +76,12 @@ def predict_cupt_file(
     
     model_name = checkpoint['model_name']
     label_to_id = checkpoint['label_to_id']
+    category_to_id = checkpoint['category_to_id']
     id_to_label = {v: k for k, v in label_to_id.items()}
+    id_to_category = {v: k for k, v in category_to_id.items()}
     
     # Initialize model
-    model = MWEIdentificationModel(model_name, num_labels=len(label_to_id))
+    model = MWEIdentificationModel(model_name, num_labels=len(label_to_id), num_categories=len(category_to_id))
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
     model.eval()
@@ -92,6 +94,7 @@ def predict_cupt_file(
         tokenizer = MWETokenizer(model_name)
     
     print(f"Model loaded. Best F1: {checkpoint.get('best_f1', 'N/A')}")
+    print(f"Categories: {len(category_to_id)} types")
     
     # Read input file
     print(f"\nReading input file: {input_file}")
@@ -111,9 +114,9 @@ def predict_cupt_file(
             # Empty line = end of sentence
             if not line.strip():
                 if current_tokens:
-                    # Predict for this sentence
-                    pred_tags = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, device)
-                    predictions_by_sentence.append(pred_tags)
+                    # Predict for this sentence (returns bio_tags and categories)
+                    pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device)
+                    predictions_by_sentence.append((pred_tags, pred_cats))
                     current_tokens = []
                 else:
                     predictions_by_sentence.append([])
@@ -135,10 +138,17 @@ def predict_cupt_file(
         
         # Don't forget last sentence
         if current_tokens:
-            pred_tags = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, device)
-            predictions_by_sentence.append(pred_tags)
+            pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device)
+            predictions_by_sentence.append((pred_tags, pred_cats))
     
     print(f"Predicted MWEs for {len(predictions_by_sentence)} sentences")
+    
+    # Convert predictions to MWE column format
+    print("Converting predictions to CUPT format...")
+    mwe_columns_by_sentence = []
+    for pred_tags, pred_cats in predictions_by_sentence:
+        mwe_col = bio_tags_to_mwe_column([], pred_tags, pred_cats)  # Tokens not needed
+        mwe_columns_by_sentence.append(mwe_col)
     
     # Write output file
     print(f"\nWriting predictions to: {output_file}")
@@ -179,163 +189,15 @@ def predict_cupt_file(
             # Regular token: add prediction
             token_idx += 1
             
-            if sentence_idx + 1 < len(predictions_by_sentence) and token_idx < len(predictions_by_sentence[sentence_idx + 1]):
-                bio_tag = predictions_by_sentence[sentence_idx + 1][token_idx]
-                
-                # Convert BIO tag to MWE column format
-                # For now, we just use simple numbering (could be improved)
-                if bio_tag == 'O':
-                    parts[10] = '*'
-                else:
-                    # This is simplified - a proper implementation would track MWE IDs
-                    # We'll do a second pass for this
-                    parts[10] = bio_tag
+            if sentence_idx + 1 < len(mwe_columns_by_sentence) and token_idx < len(mwe_columns_by_sentence[sentence_idx + 1]):
+                mwe_annotation = mwe_columns_by_sentence[sentence_idx + 1][token_idx]
+                parts[10] = mwe_annotation
             else:
                 parts[10] = '*'
             
             fout.write('\t'.join(parts) + '\n')
     
-    # Second pass: convert BIO tags to proper MWE numbering
-    print("Converting BIO tags to MWE format...")
-    _convert_bio_to_mwe_format(output_file, predictions_by_sentence)
-    
     print("\nPrediction completed!")
-
-
-def _convert_bio_to_mwe_format(cupt_file: str, predictions: List[List[str]]):
-    """
-    Convert BIO tags in CUPT file to proper MWE column format
-    This function does a second pass to properly number MWEs
-    """
-    # Read file with BIO tags
-    with open(cupt_file, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-    
-    # Convert predictions to MWE column format
-    sentence_idx = -1
-    token_idx = -1
-    output_lines = []
-    
-    for line in lines:
-        line = line.rstrip('\n')
-        
-        # Copy comments and empty lines
-        if line.startswith('#') or not line.strip():
-            output_lines.append(line + '\n')
-            if not line.strip():
-                sentence_idx += 1
-                token_idx = -1
-            continue
-        
-        # Parse token line
-        parts = line.split('\t')
-        
-        if len(parts) < 11:
-            output_lines.append(line + '\n')
-            continue
-        
-        token_id = parts[0]
-        
-        # Multi-word tokens: keep original
-        if '-' in token_id or '.' in token_id:
-            output_lines.append(line + '\n')
-            continue
-        
-        # Regular token
-        token_idx += 1
-        
-        # Get BIO tag and convert
-        if sentence_idx < len(predictions) and token_idx < len(predictions[sentence_idx]):
-            bio_tag = predictions[sentence_idx][token_idx]
-            
-            # Keep the tag for now (will be converted in next step)
-            parts[10] = bio_tag
-        else:
-            parts[10] = '*'
-        
-        output_lines.append('\t'.join(parts) + '\n')
-    
-    # Now convert BIO tags to MWE IDs
-    final_lines = []
-    sentence_idx = -1
-    
-    for line in output_lines:
-        line = line.rstrip('\n')
-        
-        if line.startswith('#') or not line.strip():
-            final_lines.append(line + '\n')
-            if not line.strip():
-                sentence_idx += 1
-            continue
-        
-        parts = line.split('\t')
-        
-        if len(parts) < 11:
-            final_lines.append(line + '\n')
-            continue
-        
-        token_id = parts[0]
-        
-        if '-' in token_id or '.' in token_id:
-            final_lines.append(line + '\n')
-            continue
-        
-        # Convert BIO to MWE format
-        bio_tag = parts[10]
-        if bio_tag in ['O', '*']:
-            parts[10] = '*'
-        # Will be properly converted below
-        
-        final_lines.append('\t'.join(parts) + '\n')
-    
-    # Third pass: actually convert BIO sequences to MWE IDs
-    final_output = []
-    sentence_bio_tags = []
-    sentence_lines = []
-    
-    for line in final_lines:
-        line = line.rstrip('\n')
-        
-        if not line.strip():
-            # Process accumulated sentence
-            if sentence_bio_tags:
-                mwe_column = bio_tags_to_mwe_column([''] * len(sentence_bio_tags), sentence_bio_tags)
-                
-                for i, sent_line in enumerate(sentence_lines):
-                    if sent_line.startswith('#') or not sent_line.strip():
-                        final_output.append(sent_line + '\n')
-                        continue
-                    
-                    parts = sent_line.split('\t')
-                    if len(parts) >= 11 and '-' not in parts[0] and '.' not in parts[0]:
-                        if i < len(mwe_column):
-                            parts[10] = mwe_column[i]
-                    
-                    final_output.append('\t'.join(parts) + '\n')
-                
-                sentence_bio_tags = []
-                sentence_lines = []
-            
-            final_output.append('\n')
-            continue
-        
-        if line.startswith('#'):
-            final_output.append(line + '\n')
-            continue
-        
-        parts = line.split('\t')
-        
-        if '-' in parts[0] or '.' in parts[0]:
-            sentence_lines.append(line)
-            continue
-        
-        if len(parts) >= 11:
-            sentence_bio_tags.append(parts[10])
-            sentence_lines.append(line)
-    
-    # Write final output
-    with open(cupt_file, 'w', encoding='utf-8') as f:
-        f.writelines(final_output)
 
 
 if __name__ == '__main__':
