@@ -384,22 +384,37 @@ def train_mwe_model(
         if val_metrics['f1'] > best_f1:
             best_f1 = val_metrics['f1']
             print(f"\nNew best F1: {best_f1:.4f} - Saving model...")
+            print(f"DEBUG: output_dir = {output_dir}")
+            
+            # Ensure output directory exists
+            os.makedirs(output_dir, exist_ok=True)
             
             model_path = os.path.join(output_dir, 'best_model.pt')
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'best_f1': best_f1,
-                'label_to_id': label_to_id,
-                'category_to_id': category_to_id,
-                'pos_to_id': pos_to_id,
-                'model_name': model_name,
-                'use_pos': use_pos
-            }, model_path)
+            print(f"DEBUG: Saving model to: {model_path}")
             
-            # Save tokenizer
-            tokenizer.tokenizer.save_pretrained(os.path.join(output_dir, 'tokenizer'))
+            try:
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_f1': best_f1,
+                    'label_to_id': label_to_id,
+                    'category_to_id': category_to_id,
+                    'pos_to_id': pos_to_id,
+                    'model_name': model_name,
+                    'use_pos': use_pos
+                }, model_path)
+                print(f"✓ Model saved successfully to: {model_path}")
+                
+                # Save tokenizer
+                tokenizer_dir = os.path.join(output_dir, 'tokenizer')
+                os.makedirs(tokenizer_dir, exist_ok=True)
+                tokenizer.tokenizer.save_pretrained(tokenizer_dir)
+                print(f"✓ Tokenizer saved to: {tokenizer_dir}")
+            except Exception as e:
+                print(f"⚠️  ERROR saving model: {e}")
+                import traceback
+                traceback.print_exc()
         
         print()
     
@@ -409,14 +424,29 @@ def train_mwe_model(
         json.dump(training_history, f, indent=2)
     
     # Load the best model for final test evaluation (if it exists)
+    print(f"\nDEBUG: output_dir at load time = {output_dir}")
     model_path = os.path.join(output_dir, 'best_model.pt')
+    print(f"DEBUG: Looking for model at: {model_path}")
+    print(f"DEBUG: File exists? {os.path.exists(model_path)}")
+    
     if os.path.exists(model_path):
         print("\nLoading best model for test evaluation...")
-        checkpoint = torch.load(model_path, map_location=device)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print("Evaluating on test set...")
+        try:
+            checkpoint = torch.load(model_path, map_location=device)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            print("✓ Best model loaded successfully")
+            print("Evaluating on test set...")
+        except Exception as e:
+            print(f"⚠️  ERROR loading model: {e}")
+            import traceback
+            traceback.print_exc()
+            print("Evaluating on test set with final epoch model...")
     else:
-        print("\n⚠️  Warning: No model was saved (validation F1 never improved)")
+        print(f"\n⚠️  Warning: Model file not found at {model_path}")
+        print("Possible reasons:")
+        print("  - Validation F1 never improved from initial value (-1)")
+        print("  - Model saving failed")
+        print("  - output_dir parameter changed between save and load")
         print("Evaluating on test set with final epoch model...")
     
     # Final evaluation on test set
