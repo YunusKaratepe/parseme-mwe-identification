@@ -204,6 +204,26 @@ class CUPTDataLoader:
         """Get mapping of MWE categories to indices"""
         categories = ['O'] + sorted(list(self.mwe_categories))
         return {cat: idx for idx, cat in enumerate(categories)}
+    
+    def get_pos_mapping(self, sentences: List[Dict] = None):
+        """Get mapping of POS tags to indices (Universal POS tags + padding)"""
+        # Universal POS tags from UD
+        universal_pos = [
+            '<PAD>',  # 0 for padding/unknown
+            'ADJ', 'ADP', 'ADV', 'AUX', 'CCONJ', 'DET', 'INTJ', 'NOUN',
+            'NUM', 'PART', 'PRON', 'PROPN', 'PUNCT', 'SCONJ', 'SYM', 
+            'VERB', 'X', '_'  # _ for missing
+        ]
+        pos_mapping = {pos: idx for idx, pos in enumerate(universal_pos)}
+        
+        # Add any additional POS tags found in data
+        if sentences:
+            for sent in sentences:
+                for pos in sent.get('pos_tags', []):
+                    if pos not in pos_mapping:
+                        pos_mapping[pos] = len(pos_mapping)
+        
+        return pos_mapping
 
 
 def create_bio_tags_from_cupt(cupt_file: str) -> Tuple[List[List[str]], List[List[str]]]:

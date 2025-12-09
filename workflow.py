@@ -27,7 +27,7 @@ def print_options():
     print()
 
 
-def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False):
+def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False):
     """Train model on specified language(s)"""
     # Handle both single language string and list of languages
     if isinstance(languages, str):
@@ -77,6 +77,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         dev_files_str = ','.join(dev_files)
         
         cmd = f"python src/train.py --train {train_files_str} --dev {dev_files_str} --output {output_dir} --epochs {epochs} --batch_size {batch_size} --sample_ratio {sample_ratio}"
+        if use_pos:
+            cmd += " --pos"
         result = os.system(cmd)
         
         if result == 0:
@@ -111,6 +113,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
                 continue
             
             cmd = f"python src/train.py --train {train_file} --dev {dev_file} --output {output_dir} --epochs {epochs} --batch_size {batch_size} --sample_ratio {sample_ratio}"
+            if use_pos:
+                cmd += " --pos"
             result = os.system(cmd)
             
             if result == 0:
@@ -258,6 +262,8 @@ Available languages:
                        help='Ratio of training data to use (0.0-1.0, default: 1.0 = 100%%)')
     parser.add_argument('--multilingual', action='store_true',
                        help='Train single multilingual model on all specified languages combined')
+    parser.add_argument('--pos', action='store_true',
+                       help='Enable POS tag feature injection for improved performance')
     parser.add_argument('--examples', type=int, default=10,
                        help='Number of examples to visualize (default: 10)')
     
@@ -266,7 +272,7 @@ Available languages:
     print_banner()
     
     if args.command == 'train':
-        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual)
+        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos)
     elif args.command == 'predict':
         # For predict, visualize, summary - use first language if multiple specified
         language = args.languages[0] if args.languages else 'FR'

@@ -95,14 +95,24 @@ def predict_cupt_file(
     model_name = checkpoint['model_name']
     label_to_id = checkpoint['label_to_id']
     category_to_id = checkpoint['category_to_id']
+    pos_to_id = checkpoint.get('pos_to_id', None)
+    use_pos = checkpoint.get('use_pos', False)
     id_to_label = {v: k for k, v in label_to_id.items()}
     id_to_category = {v: k for k, v in category_to_id.items()}
     
     # Initialize model
-    model = MWEIdentificationModel(model_name, num_labels=len(label_to_id), num_categories=len(category_to_id))
+    model = MWEIdentificationModel(
+        model_name, 
+        num_labels=len(label_to_id), 
+        num_categories=len(category_to_id),
+        num_pos_tags=len(pos_to_id) if pos_to_id else 18,
+        use_pos=use_pos
+    )
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
     model.eval()
+    
+    print(f"POS feature injection: {'ENABLED' if use_pos else 'DISABLED'}")
     
     # Initialize tokenizer
     tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')

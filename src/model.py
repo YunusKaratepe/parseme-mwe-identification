@@ -12,31 +12,43 @@ class MWEIdentificationModel(nn.Module):
     """Multi-task token classification model for MWE identification and categorization"""
     
     def __init__(self, model_name: str = 'bert-base-multilingual-cased', num_labels: int = 3, 
-                 num_categories: int = 1, dropout: float = 0.1):
+                 num_categories: int = 1, dropout: float = 0.1, num_pos_tags: int = 18, 
+                 use_pos: bool = True):
         super().__init__()
         
         self.model_name = model_name
         self.num_labels = num_labels
         self.num_categories = num_categories
+        self.use_pos = use_pos
         
         # Load pretrained transformer
         self.config = AutoConfig.from_pretrained(model_name)
         self.transformer = AutoModel.from_pretrained(model_name)
         
+        # POS tag embeddings ("free lunch" feature injection)
+        if self.use_pos:
+            self.pos_embedding = nn.Embedding(num_pos_tags, 128)  # Small embedding dim
+            self.pos_dropout = nn.Dropout(dropout)
+            # Combined hidden size = BERT hidden + POS embedding
+            combined_hidden_size = self.config.hidden_size + 128
+        else:
+            combined_hidden_size = self.config.hidden_size
+        
         # Shared dropout
         self.dropout = nn.Dropout(dropout)
         
-        # Multi-task classification heads
-        self.bio_classifier = nn.Linear(self.config.hidden_size, num_labels)
-        self.category_classifier = nn.Linear(self.config.hidden_size, num_categories)
+        # Multi-task classification heads (take combined features)
+        self.bio_classifier = nn.Linear(combined_hidden_size, num_labels)
+        self.category_classifier = nn.Linear(combined_hidden_size, num_categories)
         
-    def forward(self, input_ids, attention_mask, labels=None, category_labels=None):
+    def forward(self, input_ids, attention_mask, labels=None, category_labels=None, pos_ids=None):
         """
         Args:
             input_ids: [batch_size, seq_len]
             attention_mask: [batch_size, seq_len]
             labels: [batch_size, seq_len] (optional, BIO labels for training)
             category_labels: [batch_size, seq_len] (optional, category labels for training)
+            pos_ids: [batch_size, seq_len] (optional, POS tag IDs for feature injection)
         
         Returns:
             dict with loss, bio_logits, category_logits
@@ -50,6 +62,13 @@ class MWEIdentificationModel(nn.Module):
         # Get hidden states
         sequence_output = outputs.last_hidden_state  # [batch_size, seq_len, hidden_size]
         sequence_output = self.dropout(sequence_output)
+        
+        # Inject POS tag features ("free lunch" innovation)
+        if self.use_pos and pos_ids is not None:
+            pos_embeds = self.pos_embedding(pos_ids)  # [batch_size, seq_len, 128]
+            pos_embeds = self.pos_dropout(pos_embeds)
+            # Concatenate BERT features with POS features
+            sequence_output = torch.cat([sequence_output, pos_embeds], dim=-1)
         
         # Predict BIO tags
         bio_logits = self.bio_classifier(sequence_output)  # [batch_size, seq_len, num_labels]
@@ -89,10 +108,12 @@ class MWETokenizer:
         label_to_id: Dict[str, int],
         categories: Optional[List[str]] = None,
         category_to_id: Optional[Dict[str, int]] = None,
+        pos_tags: Optional[List[str]] = None,
+        pos_to_id: Optional[Dict[str, int]] = None,
         max_length: int = 512
     ) -> Dict:
         """
-        Tokenize words and align BIO labels and categories to subword tokens
+        Tokenize words and align BIO labels, categories, and POS tags to subword tokens
         
         Args:
             tokens: List of words
@@ -100,10 +121,12 @@ class MWETokenizer:
             label_to_id: Mapping from label string to ID
             categories: List of MWE categories (optional)
             category_to_id: Mapping from category string to ID (optional)
+            pos_tags: List of POS tags (optional, for feature injection)
+            pos_to_id: Mapping from POS tag to ID (optional)
             max_length: Maximum sequence length
         
         Returns:
-            Dictionary with input_ids, attention_mask, aligned labels, and category labels
+            Dictionary with input_ids, attention_mask, aligned labels, category labels, and POS IDs
         """
         # Tokenize with word alignment
         tokenized = self.tokenizer(
@@ -115,17 +138,19 @@ class MWETokenizer:
             return_tensors='pt'
         )
         
-        # Align labels to subword tokens
+        # Align labels and POS tags to subword tokens
         word_ids = tokenized.word_ids(batch_index=0)
         aligned_labels = []
         aligned_categories = []
+        aligned_pos = []
         previous_word_idx = None
         
         for word_idx in word_ids:
             if word_idx is None:
-                # Special tokens get -100 (ignored in loss)
+                # Special tokens get -100 (ignored in loss) or 0 for POS
                 aligned_labels.append(-100)
                 aligned_categories.append(-100)
+                aligned_pos.append(0 if pos_tags and pos_to_id else -100)
             elif word_idx != previous_word_idx:
                 # First subword of a word gets the original label
                 aligned_labels.append(label_to_id[labels[word_idx]])
@@ -133,15 +158,26 @@ class MWETokenizer:
                     aligned_categories.append(category_to_id[categories[word_idx]])
                 else:
                     aligned_categories.append(-100)
+                # POS tag for this word
+                if pos_tags and pos_to_id:
+                    aligned_pos.append(pos_to_id.get(pos_tags[word_idx], 0))  # 0 = unknown POS
+                else:
+                    aligned_pos.append(-100)
             else:
                 # Subsequent subwords get -100 (only first subword is labeled)
+                # But inherit POS from first subword
                 aligned_labels.append(-100)
                 aligned_categories.append(-100)
+                if pos_tags and pos_to_id:
+                    aligned_pos.append(pos_to_id.get(pos_tags[word_idx], 0))
+                else:
+                    aligned_pos.append(-100)
             
             previous_word_idx = word_idx
         
         tokenized['labels'] = torch.tensor([aligned_labels])
         tokenized['category_labels'] = torch.tensor([aligned_categories])
+        tokenized['pos_ids'] = torch.tensor([aligned_pos])
         
         return tokenized
     
@@ -152,6 +188,8 @@ class MWETokenizer:
         label_to_id: Dict[str, int],
         batch_categories: Optional[List[List[str]]] = None,
         category_to_id: Optional[Dict[str, int]] = None,
+        batch_pos_tags: Optional[List[List[str]]] = None,
+        pos_to_id: Optional[Dict[str, int]] = None,
         max_length: int = 512
     ) -> Dict:
         """Tokenize and align labels for a batch of sentences"""
@@ -160,21 +198,26 @@ class MWETokenizer:
         all_attention_mask = []
         all_labels = []
         all_category_labels = []
+        all_pos_ids = []
         
         for i, (tokens, labels) in enumerate(zip(batch_tokens, batch_labels)):
             categories = batch_categories[i] if batch_categories else None
+            pos_tags = batch_pos_tags[i] if batch_pos_tags else None
             tokenized = self.tokenize_and_align_labels(
-                tokens, labels, label_to_id, categories, category_to_id, max_length
+                tokens, labels, label_to_id, categories, category_to_id, 
+                pos_tags, pos_to_id, max_length
             )
             all_input_ids.append(tokenized['input_ids'])
             all_attention_mask.append(tokenized['attention_mask'])
             all_labels.append(tokenized['labels'])
             all_category_labels.append(tokenized['category_labels'])
+            all_pos_ids.append(tokenized['pos_ids'])
         
         return {
             'input_ids': torch.cat(all_input_ids, dim=0),
             'attention_mask': torch.cat(all_attention_mask, dim=0),
             'labels': torch.cat(all_labels, dim=0),
+            'pos_ids': torch.cat(all_pos_ids, dim=0),
             'category_labels': torch.cat(all_category_labels, dim=0)
         }
 
