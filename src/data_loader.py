@@ -96,13 +96,22 @@ class CUPTDataLoader:
         - '1' = part of MWE #1
         - '1:VID' = part of MWE #1 with category VID
         - '1;2:NID' = part of both MWE #1 and MWE #2
+        
+        For overlapping MWEs (e.g., 1;2), we select the PRIMARY MWE at each token:
+        - Prefer the one with explicit category at THIS token (e.g., '2:NID' over '1')
+        - This allows us to pick the "most specific" MWE at overlapping points
         """
         num_tokens = len(sentence['tokens'])
         mwe_tags = ['O'] * num_tokens
         mwe_categories = ['O'] * num_tokens
         
-        # Track MWE spans: mwe_id -> list of (token_idx, category)
-        mwe_spans = defaultdict(list)
+        # First pass: collect all MWE spans and their categories
+        # mwe_id -> {category: str, tokens: list of token_idx}
+        mwe_info = defaultdict(lambda: {'category': None, 'tokens': []})
+        
+        # Track which MWEs are present at each token, with priority info
+        # token_idx -> list of (mwe_id, category, has_explicit_cat)
+        token_mwes = defaultdict(list)
         
         for idx, mwe_annotation in enumerate(sentence['mwe_raw']):
             if mwe_annotation == '*':
@@ -117,32 +126,68 @@ class CUPTDataLoader:
                     continue
                 
                 # Parse MWE ID and category
-                if ':' in mwe_part:
+                has_explicit_category = ':' in mwe_part
+                if has_explicit_category:
                     mwe_id, category = mwe_part.split(':', 1)
+                    self.mwe_categories.add(category)
+                    # Update MWE category if we found an explicit one
+                    if mwe_info[mwe_id]['category'] is None:
+                        mwe_info[mwe_id]['category'] = category
                 else:
                     mwe_id = mwe_part
-                    category = 'MWE'  # Default category
+                    category = None
                 
-                self.mwe_categories.add(category)
-                mwe_spans[mwe_id].append((idx, category))
+                mwe_info[mwe_id]['tokens'].append(idx)
+                token_mwes[idx].append((mwe_id, category, has_explicit_category))
         
-        # Convert to BIO tags
-        for mwe_id, spans in mwe_spans.items():
-            if not spans:
+        # Second pass: for each token, decide which MWE it belongs to (for overlaps)
+        # token_idx -> (mwe_id, category)
+        token_assignment = {}
+        
+        for idx in range(num_tokens):
+            if idx not in token_mwes or not token_mwes[idx]:
                 continue
             
-            # Sort by token index
-            spans.sort(key=lambda x: x[0])
+            candidates = token_mwes[idx]
             
-            # First token gets B- tag
-            first_idx, category = spans[0]
-            mwe_tags[first_idx] = f'B-MWE'
-            mwe_categories[first_idx] = category
+            # For overlapping MWEs at this token, prefer:
+            # 1. One with explicit category at THIS token
+            # 2. If tie, prefer numerically first MWE ID
+            candidates.sort(key=lambda x: (not x[2], x[0]))
+            selected_mwe_id, selected_category, _ = candidates[0]
             
-            # Rest get I- tag
-            for idx, cat in spans[1:]:
-                mwe_tags[idx] = f'I-MWE'
-                mwe_categories[idx] = cat
+            # If no category at this token, use MWE's overall category
+            if not selected_category:
+                selected_category = mwe_info[selected_mwe_id]['category']
+            
+            # Still no category? Use default
+            if not selected_category:
+                selected_category = 'VID'
+                self.mwe_categories.add(selected_category)
+            
+            token_assignment[idx] = (selected_mwe_id, selected_category)
+        
+        # Third pass: convert to BIO tags based on token assignments
+        # Group consecutive tokens by MWE ID to determine B- vs I- tags
+        current_mwe_id = None
+        
+        for idx in range(num_tokens):
+            if idx not in token_assignment:
+                mwe_tags[idx] = 'O'
+                mwe_categories[idx] = 'O'
+                current_mwe_id = None
+                continue
+            
+            mwe_id, category = token_assignment[idx]
+            
+            # B-MWE if: new MWE starts or different MWE from previous token
+            if mwe_id != current_mwe_id:
+                mwe_tags[idx] = 'B-MWE'
+                current_mwe_id = mwe_id
+            else:
+                mwe_tags[idx] = 'I-MWE'
+            
+            mwe_categories[idx] = category
         
         sentence['mwe_tags'] = mwe_tags
         sentence['mwe_categories'] = mwe_categories
