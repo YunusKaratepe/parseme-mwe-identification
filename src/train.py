@@ -195,8 +195,6 @@ def train_mwe_model(
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
-    print(f"Output directory: {output_dir}")
-    print(f"Output directory exists: {os.path.exists(output_dir)}")
     
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -384,13 +382,11 @@ def train_mwe_model(
         if val_metrics['f1'] > best_f1:
             best_f1 = val_metrics['f1']
             print(f"\nNew best F1: {best_f1:.4f} - Saving model...")
-            print(f"DEBUG: output_dir = {output_dir}")
             
             # Ensure output directory exists
             os.makedirs(output_dir, exist_ok=True)
             
             model_path = os.path.join(output_dir, 'best_model.pt')
-            print(f"DEBUG: Saving model to: {model_path}")
             
             try:
                 torch.save({
@@ -404,13 +400,13 @@ def train_mwe_model(
                     'model_name': model_name,
                     'use_pos': use_pos
                 }, model_path)
-                print(f"✓ Model saved successfully to: {model_path}")
+                print(f"✓ Model saved successfully")
                 
                 # Save tokenizer
                 tokenizer_dir = os.path.join(output_dir, 'tokenizer')
                 os.makedirs(tokenizer_dir, exist_ok=True)
                 tokenizer.tokenizer.save_pretrained(tokenizer_dir)
-                print(f"✓ Tokenizer saved to: {tokenizer_dir}")
+                print(f"✓ Tokenizer saved")
             except Exception as e:
                 print(f"⚠️  ERROR saving model: {e}")
                 import traceback
@@ -424,10 +420,7 @@ def train_mwe_model(
         json.dump(training_history, f, indent=2)
     
     # Load the best model for final test evaluation (if it exists)
-    print(f"\nDEBUG: output_dir at load time = {output_dir}")
     model_path = os.path.join(output_dir, 'best_model.pt')
-    print(f"DEBUG: Looking for model at: {model_path}")
-    print(f"DEBUG: File exists? {os.path.exists(model_path)}")
     
     if os.path.exists(model_path):
         print("\nLoading best model for test evaluation...")
