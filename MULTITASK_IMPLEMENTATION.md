@@ -87,12 +87,15 @@ Now produces valid format:
 3. **Expected F1 Gain**: +3-8% over BIO-only approach
 
 ### Category Prediction:
-- **Accuracy Target**: 70-80% on MWE tokens
-- **Most Common Categories**: 
-  - MWE (generic): 53.42%
-  - AdpID: 8.56%
-  - NID: 8.00%
-  - VID: 6.81%
+- **Current Accuracy**: 71.18% on MWE tokens (French, 3 epochs)
+- **Most Common Categories in French**: 
+  - VID (verbal idioms): ~25%
+  - NID (nominal idioms): ~18%
+  - LVC.full (light verb constructions): ~15%
+  - AdpID (prepositional idioms): ~12%
+  - AdvID (adverbial idioms): ~8%
+
+**Note**: Generic "MWE" category removed via data loader fix
 
 ## Training New Models
 

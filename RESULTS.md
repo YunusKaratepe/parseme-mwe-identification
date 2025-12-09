@@ -4,12 +4,14 @@
 
 ### Current Results (French - FR)
 
-✅ **Model trained and tested**
-- **F1 Score**: 79.24%
-- **Precision**: 82.72%
-- **Recall**: 76.05%
-- **Training time**: ~8 minutes (2 epochs)
+✅ **Model trained and tested** (Latest: 3 epochs, 100% data)
+- **F1 Score**: 74.37%
+- **Precision**: 75.87%
+- **Recall**: 72.93%
+- **Category Accuracy**: 71.18%
+- **Training time**: ~15 minutes (3 epochs)
 - **Predictions generated**: 354 sentences with MWE annotations
+- **Validation**: ✅ PASSED (parseme_validate.py)
 
 ---
 
@@ -22,11 +24,12 @@
 - **`src/predict.py`**: Inference script for generating predictions
 - **`src/summary.py`**: Results summary and reporting
 
-### 2. Trained Model
-- **Location**: `models/FR/best_model.pt`
-- **Size**: 2.0 GB
+### 2. Trained Models
+- **Location**: `models/multilingual_FR/best_model.pt`
+- **Size**: ~2.1 GB
 - **Base Model**: bert-base-multilingual-cased
-- **Performance**: 79.24% F1 on French development set
+- **Architecture**: Dual-head (BIO + 17 categories)
+- **Performance**: 74.37% F1, 71.18% category accuracy on French dev set
 
 ### 3. Predictions
 - **Location**: `predictions/FR/test.cupt`
