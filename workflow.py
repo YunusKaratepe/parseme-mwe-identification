@@ -68,16 +68,10 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         if missing_languages:
             print(f"⚠️  Skipping languages: {', '.join(missing_languages)}\n")
         
-        # Determine output directory
-        # If output_base looks like a complete path (contains multilingual_ or language code at end),
-        # use it as-is. Otherwise, construct the path automatically.
-        if 'multilingual_' in output_base or output_base.endswith(tuple(languages)):
-            # User provided complete path
-            output_dir = output_base
-        else:
-            # Construct path automatically
-            lang_code = '+'.join([lang for lang in languages if lang not in missing_languages])
-            output_dir = f"{output_base}/multilingual_{lang_code}"
+        # Create output directory for multilingual model
+        lang_code = '+'.join([lang for lang in languages if lang not in missing_languages])
+        output_dir = f"{output_base}/multilingual_{lang_code}"
+        print(f"📁 Output directory: {output_dir}")
         
         # Join files with comma separator for train.py
         train_files_str = ','.join(train_files)
