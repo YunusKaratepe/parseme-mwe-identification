@@ -12,40 +12,58 @@ from data_loader import CUPTDataLoader
 from model import MWEIdentificationModel, MWETokenizer, predict_mwe_tags
 
 
-def bio_tags_to_mwe_column(tokens: List[str], bio_tags: List[str], mwe_categories: List[str] = None) -> List[str]:
+def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None) -> List[str]:
     """
     Convert BIO tags back to CUPT MWE column format
     
     Args:
-        tokens: List of words
         bio_tags: List of BIO tags
         mwe_categories: List of MWE categories (optional)
     
     Returns:
         List of MWE column values (e.g., '*', '1', '1:VID', etc.)
     """
-    mwe_column = ['*'] * len(tokens)
+    # Valid PARSEME categories (generic "MWE" is not valid)
+    VALID_CATEGORIES = {
+        'IAV', 'IRV', 'LVC.cause', 'LVC.full', 'MVC', 'VID',
+        'IVPC.full', 'IVPC.semi', 'AdjID', 'AdpID', 'AdvID', 
+        'ConjID', 'DetID', 'IntjID', 'NID', 'PronID',
+        'AV.LVC.full', 'AV.LVC.cause', 'AV.VID', 'AV.IRV',
+        'AV.IVPC.full', 'AV.IVPC.semi', 'AV.MVC', 'AV.IAV',
+        'NV.LVC.full', 'NV.LVC.cause', 'NV.VID', 'NV.IRV',
+        'NV.IVPC.full', 'NV.IVPC.semi', 'NV.MVC', 'NV.IAV'
+    }
+    
+    mwe_column = ['*'] * len(bio_tags)
     mwe_id_counter = 1
     current_mwe_id = None
+    current_category = None
     
     for idx, tag in enumerate(bio_tags):
         if tag == 'B-MWE':
-            # Start new MWE
+            # Start new MWE - first token gets ID:CATEGORY
             current_mwe_id = mwe_id_counter
-            if mwe_categories and mwe_categories[idx] != 'O':
-                mwe_column[idx] = f"{current_mwe_id}:{mwe_categories[idx]}"
+            
+            if mwe_categories and idx < len(mwe_categories) and mwe_categories[idx] != 'O':
+                cat = mwe_categories[idx]
+                # Map invalid "MWE" to "VID" (most common verbal idiom)
+                if cat == 'MWE' or cat not in VALID_CATEGORIES:
+                    cat = 'VID'
+                current_category = cat
+                mwe_column[idx] = f"{current_mwe_id}:{cat}"
             else:
-                mwe_column[idx] = str(current_mwe_id)
+                # No category provided, use VID as default
+                current_category = 'VID'
+                mwe_column[idx] = f"{current_mwe_id}:VID"
             mwe_id_counter += 1
+            
         elif tag == 'I-MWE' and current_mwe_id is not None:
-            # Continue current MWE
-            if mwe_categories and mwe_categories[idx] != 'O':
-                mwe_column[idx] = f"{current_mwe_id}:{mwe_categories[idx]}"
-            else:
-                mwe_column[idx] = str(current_mwe_id)
+            # Continue current MWE - subsequent tokens just get ID (no category)
+            mwe_column[idx] = str(current_mwe_id)
         else:
             # Outside MWE or error
             current_mwe_id = None
+            current_category = None
     
     return mwe_column
 
@@ -147,7 +165,7 @@ def predict_cupt_file(
     print("Converting predictions to CUPT format...")
     mwe_columns_by_sentence = []
     for pred_tags, pred_cats in predictions_by_sentence:
-        mwe_col = bio_tags_to_mwe_column([], pred_tags, pred_cats)  # Tokens not needed
+        mwe_col = bio_tags_to_mwe_column(pred_tags, pred_cats)
         mwe_columns_by_sentence.append(mwe_col)
     
     # Write output file
@@ -181,9 +199,10 @@ def predict_cupt_file(
             
             token_id = parts[0]
             
-            # Multi-word tokens: keep original
+            # Multi-word tokens: replace '_' with '*' for predictions
             if '-' in token_id or '.' in token_id:
-                fout.write(line + '\n')
+                parts[10] = '*'
+                fout.write('\t'.join(parts) + '\n')
                 continue
             
             # Regular token: add prediction
