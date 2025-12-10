@@ -174,7 +174,8 @@ def train_mwe_model(
     seed: int = 42,
     sample_ratio: float = 1.0,
     use_pos: bool = False,
-    use_lang_tokens: bool = False
+    use_lang_tokens: bool = False,
+    loss_type: str = 'ce'
 ):
     """
     Train MWE identification model
@@ -192,6 +193,7 @@ def train_mwe_model(
         sample_ratio: Ratio of training data to use (0.0-1.0, default: 1.0)
         use_pos: Enable POS feature injection
         use_lang_tokens: Enable language-conditioned inputs (prepend [LANG] tokens)
+        loss_type: Loss function type - 'ce' for CrossEntropy, 'focal' for Focal Loss
     """
     # Set random seeds
     torch.manual_seed(seed)
@@ -290,13 +292,15 @@ def train_mwe_model(
     
     # Initialize tokenizer and model
     print(f"\nInitializing model: {model_name}")
+    print(f"Loss function: {loss_type.upper()} ({'Focal Loss' if loss_type == 'focal' else 'Cross-Entropy'})")
     tokenizer = MWETokenizer(model_name, use_lang_tokens=use_lang_tokens)
     model = MWEIdentificationModel(
         model_name, 
         num_labels=len(label_to_id), 
         num_categories=len(category_to_id),
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
-        use_pos=use_pos
+        use_pos=use_pos,
+        loss_type=loss_type
     )
     
     # Resize token embeddings if language tokens were added
@@ -412,7 +416,8 @@ def train_mwe_model(
                     'pos_to_id': pos_to_id,
                     'model_name': model_name,
                     'use_pos': use_pos,
-                    'use_lang_tokens': use_lang_tokens
+                    'use_lang_tokens': use_lang_tokens,
+                    'loss_type': loss_type
                 }, model_path)
                 print(f"✓ Model saved successfully")
                 
@@ -453,6 +458,7 @@ def train_mwe_model(
         'batch_size': batch_size,
         'use_pos': use_pos,
         'use_lang_tokens': use_lang_tokens,
+        'loss_type': loss_type,
         'model_name': model_name,
         'best_f1': best_f1,
         'num_labels': len(label_to_id),
@@ -538,6 +544,8 @@ if __name__ == '__main__':
                        help='Enable POS tag feature injection (improves performance by 3-5%%)')
     parser.add_argument('--lang_tokens', action='store_true',
                        help='Enable language-conditioned inputs (prepend [LANG] tokens to prevent language interference)')
+    parser.add_argument('--loss', type=str, default='ce', choices=['ce', 'focal'],
+                       help='Loss function: ce (CrossEntropy) or focal (Focal Loss for class imbalance)')
     
     args = parser.parse_args()
     
@@ -553,5 +561,6 @@ if __name__ == '__main__':
         seed=args.seed,
         sample_ratio=args.sample_ratio,
         use_pos=args.pos,
-        use_lang_tokens=args.lang_tokens
+        use_lang_tokens=args.lang_tokens,
+        loss_type=args.loss
     )

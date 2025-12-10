@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 from typing import List, Dict, Tuple, Optional
+from losses import get_loss_function
 
 
 class MWEIdentificationModel(nn.Module):
@@ -13,13 +14,14 @@ class MWEIdentificationModel(nn.Module):
     
     def __init__(self, model_name: str = 'bert-base-multilingual-cased', num_labels: int = 3, 
                  num_categories: int = 1, dropout: float = 0.1, num_pos_tags: int = 18, 
-                 use_pos: bool = True):
+                 use_pos: bool = True, loss_type: str = 'ce'):
         super().__init__()
         
         self.model_name = model_name
         self.num_labels = num_labels
         self.num_categories = num_categories
         self.use_pos = use_pos
+        self.loss_type = loss_type
         
         # Load pretrained transformer
         self.config = AutoConfig.from_pretrained(model_name)
@@ -40,6 +42,10 @@ class MWEIdentificationModel(nn.Module):
         # Multi-task classification heads (take combined features)
         self.bio_classifier = nn.Linear(combined_hidden_size, num_labels)
         self.category_classifier = nn.Linear(combined_hidden_size, num_categories)
+        
+        # Loss functions
+        self.bio_loss_fn = get_loss_function(loss_type, ignore_index=-100)
+        self.category_loss_fn = get_loss_function(loss_type, ignore_index=-100)
         
     def forward(self, input_ids, attention_mask, labels=None, category_labels=None, pos_ids=None):
         """
@@ -78,12 +84,11 @@ class MWEIdentificationModel(nn.Module):
         
         loss = None
         if labels is not None and category_labels is not None:
-            # BIO tagging loss
-            loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-            bio_loss = loss_fct(bio_logits.view(-1, self.num_labels), labels.view(-1))
+            # BIO tagging loss (using configured loss function)
+            bio_loss = self.bio_loss_fn(bio_logits.view(-1, self.num_labels), labels.view(-1))
             
-            # Category prediction loss
-            category_loss = loss_fct(category_logits.view(-1, self.num_categories), category_labels.view(-1))
+            # Category prediction loss (using configured loss function)
+            category_loss = self.category_loss_fn(category_logits.view(-1, self.num_categories), category_labels.view(-1))
             
             # Combined loss (equal weighting)
             loss = bio_loss + category_loss
