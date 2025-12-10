@@ -1,0 +1,25 @@
+Now, I have the submission results under the submission_results folder for my two models. One that trains for 5 epoch and excludes RO dataset. The other includes all datasets and runs for 10 epochs. You can understand them from their names. They both use pos injection but from now on, I don't want to use pos injection in my trainings because it degrades overall f1 score on my test dataset.
+
+I have also thought a bit on these results and came up with some ideas. I will want you to implement them one by one and make them useful for our project. I asked what could we do to some ai model and got these two ideas from it, bottom I have responds of the ai model. Implement them in a way that is compatible with out project and don't mess up the already running structure.
+
+You can also check the result files by yourself to double check if the ideas are correct or compatible with our setup.
+
+1. The Technique: Language-Conditioned Inputs (Language Tokens):
+Since you cannot use complex adapters due to time, use Language Special Tokens. This is a proven technique (used in Google's mBERT translation systems) to stop high-resource languages (RO) from overwriting low-resource ones (KA).
+
+Concept: Instead of feeding the model: [CLS] He made a decision ... Feed it: [RO] [CLS] He made a decision ... or [KA] [CLS] ...
+
+This explicitly tells the Attention mechanism: "We are in Romanian mode now, ignore the Georgian grammar rules."
+
+Implementation (Easy modification):
+
+Add Tokens: Add 17 new special tokens to your tokenizer ([RO], [EN], [KA], etc.).
+
+Resize Embeddings: model.resize_token_embeddings(len(tokenizer)).
+
+Prepend in Loader: In your __getitem__, simply add the language token ID to the start of the input_ids.
+
+2. The "Free Points" Fix: Heuristic Stitching:
+You cannot afford to have 0.0% on Discontinuous MWEs. You don't need a parser to fix this; you need a simple post-processing script.
+
+The Logic (Run this on your predictions file): If you see a B-LVC.full followed by O followed by I-LVC.full, link them.
