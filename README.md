@@ -1,18 +1,6 @@
 # 🎯 PARSEME 2.0 - MWE Identification (Subtask 1)
 
-Multilingual multiword expression (MWE) identification system using BERT-based token classification with optional POS feature injection for the PARSEME 2.0 shared task.
-
-## 🏆 Latest Results
-
-**Multilingual Model (PL+FR+EL)** - 2 epochs with 10% training data:
-- **Test F1**: 65.49%
-- **Test Precision**: 70.22%
-- **Test Recall**: 61.36%
-- **Validation F1**: 63.97%
-
-**French Baseline** - 3 epochs (no POS):
-- **Test F1**: 74.37%
-- **Category Accuracy**: 71.18%
+Multilingual multiword expression (MWE) identification system using BERT-based token classification with advanced features including ensemble predictions for the PARSEME 2.0 shared task.
 
 ## ⚡ Quick Start
 
@@ -51,6 +39,11 @@ python workflow.py train FR PL EL --epochs 3 --batch_size 16 --multilingual
 python workflow.py train FR PL EL --epochs 3 --batch_size 16 --multilingual --lang_tokens
 ```
 
+**With Focal Loss (Handles Class Imbalance):**
+```bash
+python workflow.py train FR PL EL --epochs 3 --batch_size 16 --multilingual --lang_tokens --loss focal
+```
+
 **Quick Experiment (10% data):**
 ```bash
 python workflow.py train FR PL EL --epochs 1 --sample_ratio 0.1 --multilingual
@@ -58,21 +51,23 @@ python workflow.py train FR PL EL --epochs 1 --sample_ratio 0.1 --multilingual
 
 ### 3. Generate Predictions
 
-**Note**: Predictions automatically include discontinuous MWE post-processing (enabled by default)
-
-**For All Languages in Model:**
-```bash
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt
-```
-
-**For Specific Languages:**
+**Single Model Submission:**
 ```bash
 python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt --lang FR PL EL
 ```
 
-**For All 17 Available Languages:**
+**Ensemble Submission (CE + Focal Loss):**
 ```bash
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt --lang all
+python generate_submission.py \
+    --model ensemble/ce/multilingual_XXX/best_model.pt \
+    --focal_model ensemble/focal/multilingual_XXX/best_model.pt \
+    --lang FR PL EL PT RO SL SR SV UK NL EGY KA JA HE LV FA \
+    --zip ensemble_submission.zip
+```
+
+**For All Available Languages:**
+```bash
+python generate_submission.py --model models/multilingual_XXX/best_model.pt --lang all
 ```
 
 ### 4. Validate Submission

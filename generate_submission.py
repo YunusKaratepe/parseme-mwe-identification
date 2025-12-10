@@ -33,19 +33,27 @@ def get_languages_from_model_name(model_path):
     return []
 
 
-def generate_predictions(model_path, languages, base_data_dir, output_dir):
+def generate_predictions(model_path, languages, base_data_dir, output_dir, ensemble_focal_model=None):
     """
     Generate predictions for all specified languages
     
     Args:
-        model_path: Path to model checkpoint
+        model_path: Path to model checkpoint (CE model if ensemble mode)
         languages: List of language codes (e.g., ['PL', 'FR', 'EL'])
         base_data_dir: Base directory containing language subdirectories
         output_dir: Directory to save predictions
+        ensemble_focal_model: Path to Focal Loss model for ensemble mode (optional)
     """
+    is_ensemble = ensemble_focal_model is not None
+    
     print(f"=" * 80)
-    print(f"Generating predictions for {len(languages)} languages")
-    print(f"Model: {model_path}")
+    if is_ensemble:
+        print(f"Generating ENSEMBLE predictions for {len(languages)} languages")
+        print(f"CE Model:    {model_path}")
+        print(f"Focal Model: {ensemble_focal_model}")
+    else:
+        print(f"Generating predictions for {len(languages)} languages")
+        print(f"Model: {model_path}")
     print(f"Languages: {', '.join(languages)}")
     print(f"=" * 80)
     
@@ -67,13 +75,22 @@ def generate_predictions(model_path, languages, base_data_dir, output_dir):
         print(f"Processing {lang}...")
         print(f"{'=' * 60}")
         
-        # Run prediction
-        cmd = [
-            'python', 'src/predict.py',
-            '--model', model_path,
-            '--input', input_file,
-            '--output', output_file
-        ]
+        # Run prediction (ensemble or single model)
+        if is_ensemble:
+            cmd = [
+                'python', 'src/ensemble_predict.py',
+                '--ce_model', model_path,
+                '--focal_model', ensemble_focal_model,
+                '--input', input_file,
+                '--output', output_file
+            ]
+        else:
+            cmd = [
+                'python', 'src/predict.py',
+                '--model', model_path,
+                '--input', input_file,
+                '--output', output_file
+            ]
         
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -121,12 +138,27 @@ def create_submission_zip(predictions, output_zip, model_name):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate predictions and create submission zip file'
+        description='Generate predictions and create submission zip file',
+        epilog="""
+Examples:
+  # Single model submission
+  python generate_submission.py --model models/multilingual_XXX/best_model.pt --lang FR PL EL
+  
+  # Ensemble model submission (CE + Focal Loss)
+  python generate_submission.py --model ensemble/ce/multilingual_XXX/best_model.pt --focal_model ensemble/focal/multilingual_XXX/best_model.pt --lang FR PL EL --zip ensemble_submission.zip
+  
+  # All available languages
+  python generate_submission.py --model models/multilingual_XXX/best_model.pt --lang all
+        """
     )
     parser.add_argument(
         '--model',
         required=True,
-        help='Path to model checkpoint (e.g., models/multilingual_PL+FR+EL/best_model.pt)'
+        help='Path to model checkpoint (CE model if using ensemble)'
+    )
+    parser.add_argument(
+        '--focal_model',
+        help='Path to Focal Loss model for ensemble predictions (optional)'
     )
     parser.add_argument(
         '--lang',
@@ -161,6 +193,15 @@ def main():
         print(f"❌ ERROR: Model file not found: {args.model}")
         sys.exit(1)
     
+    # Validate focal model if ensemble mode
+    if args.focal_model:
+        if not os.path.exists(args.focal_model):
+            print(f"❌ ERROR: Focal model file not found: {args.focal_model}")
+            sys.exit(1)
+        print("✓ Ensemble mode enabled (CE + Focal Loss)")
+    else:
+        print("✓ Single model mode")
+    
     # Get languages
     if args.lang:
         # Check if user specified "all"
@@ -189,7 +230,8 @@ def main():
         args.model,
         languages,
         args.data_dir,
-        args.output_dir
+        args.output_dir,
+        args.focal_model
     )
     
     if not predictions:
@@ -214,6 +256,10 @@ def main():
     if not args.no_zip:
         print(f"\n📦 Submission file: {output_zip}")
         print(f"   Ready to submit!")
+    
+    if args.focal_model:
+        print(f"\n🎯 Ensemble mode was used (CE + Focal Loss)")
+        print(f"   This combines strengths of both models for better performance!")
 
 
 if __name__ == '__main__':

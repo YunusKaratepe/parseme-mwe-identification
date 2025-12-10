@@ -1,0 +1,429 @@
+"""
+Ensemble prediction script for PARSEME 2.0 MWE identification
+Combines predictions from Cross-Entropy and Focal Loss models
+Uses probability averaging to leverage strengths of both models
+"""
+import os
+import sys
+import torch
+import numpy as np
+from typing import List, Dict, Tuple
+from collections import defaultdict
+
+from data_loader import CUPTDataLoader
+from model import MWEIdentificationModel, MWETokenizer
+
+
+def load_ensemble_model(model_path: str, device: torch.device) -> Tuple:
+    """
+    Load a single model for ensemble
+    
+    Returns:
+        Tuple of (model, tokenizer, label_to_id, category_to_id, pos_to_id, use_pos, use_lang_tokens, model_name)
+    """
+    print(f"Loading model: {model_path}")
+    
+    checkpoint = torch.load(model_path, map_location=device)
+    
+    model_name = checkpoint.get('model_name', 'bert-base-multilingual-cased')
+    label_to_id = checkpoint['label_to_id']
+    category_to_id = checkpoint['category_to_id']
+    pos_to_id = checkpoint.get('pos_to_id', None)
+    use_pos = checkpoint.get('use_pos', False)
+    use_lang_tokens = checkpoint.get('use_lang_tokens', False)
+    loss_type = checkpoint.get('loss_type', 'ce')
+    
+    # Handle invalid model paths
+    if not os.path.exists(model_name) and '/' in model_name and not model_name.startswith('bert-'):
+        print(f"  WARNING: Model path '{model_name}' not found, using 'bert-base-multilingual-cased'")
+        model_name = 'bert-base-multilingual-cased'
+    
+    # Initialize model
+    model = MWEIdentificationModel(
+        model_name, 
+        num_labels=len(label_to_id), 
+        num_categories=len(category_to_id),
+        num_pos_tags=len(pos_to_id) if pos_to_id else 18,
+        use_pos=use_pos,
+        loss_type=loss_type
+    )
+    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    # Initialize tokenizer
+    if use_lang_tokens:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
+        else:
+            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
+        model.transformer.resize_token_embeddings(len(tokenizer.get_tokenizer()))
+    else:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path)
+        else:
+            tokenizer = MWETokenizer(model_name)
+    
+    model.to(device)
+    model.eval()
+    
+    print(f"  Loss type: {loss_type.upper()}, Best F1: {checkpoint.get('best_f1', 'N/A'):.4f}")
+    print(f"  POS: {'ON' if use_pos else 'OFF'}, Lang tokens: {'ON' if use_lang_tokens else 'OFF'}")
+    
+    return model, tokenizer, label_to_id, category_to_id, pos_to_id, use_pos, use_lang_tokens, model_name
+
+
+def predict_with_probabilities(
+    model: MWEIdentificationModel,
+    tokenizer: MWETokenizer,
+    tokens: List[str],
+    label_to_id: Dict[str, int],
+    category_to_id: Dict[str, int],
+    device: torch.device,
+    pos_tags: List[str] = None,
+    pos_to_id: Dict[str, int] = None,
+    use_pos: bool = False,
+    language: str = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Predict MWE tags and return probability distributions
+    
+    Returns:
+        Tuple of (bio_probs, category_probs) as numpy arrays of shape [seq_len, num_classes]
+    """
+    model.eval()
+    
+    # Create dummy labels for tokenization
+    dummy_labels = ['O'] * len(tokens)
+    dummy_categories = ['VID'] * len(tokens)
+    
+    # Tokenize
+    tokenized = tokenizer.tokenize_and_align_labels(
+        tokens, dummy_labels, label_to_id,
+        dummy_categories, category_to_id,
+        pos_tags, pos_to_id, 512, language
+    )
+    
+    input_ids = tokenized['input_ids'].to(device)
+    attention_mask = tokenized['attention_mask'].to(device)
+    pos_ids = tokenized['pos_ids'].to(device)
+    
+    with torch.no_grad():
+        outputs = model(input_ids, attention_mask, pos_ids=pos_ids)
+        
+        # Get probability distributions (softmax)
+        bio_probs = torch.softmax(outputs['bio_logits'], dim=-1)  # [1, seq_len, num_labels]
+        category_probs = torch.softmax(outputs['category_logits'], dim=-1)  # [1, seq_len, num_categories]
+    
+    # Extract word-level probabilities (skip special tokens and subwords)
+    word_ids = tokenized.word_ids(batch_index=0)
+    word_bio_probs = []
+    word_category_probs = []
+    previous_word_idx = None
+    
+    for idx, word_idx in enumerate(word_ids):
+        if word_idx is not None and word_idx != previous_word_idx:
+            word_bio_probs.append(bio_probs[0, idx].cpu().numpy())
+            word_category_probs.append(category_probs[0, idx].cpu().numpy())
+            previous_word_idx = word_idx
+    
+    return np.array(word_bio_probs), np.array(word_category_probs)
+
+
+def ensemble_predict(
+    models: List[MWEIdentificationModel],
+    tokenizers: List[MWETokenizer],
+    tokens: List[str],
+    label_to_id: Dict[str, int],
+    category_to_id: Dict[str, int],
+    id_to_label: Dict[int, str],
+    id_to_category: Dict[int, str],
+    device: torch.device,
+    pos_tags_list: List[List[str]],
+    pos_to_id_list: List[Dict[str, int]],
+    use_pos_list: List[bool],
+    language: str = None
+) -> Tuple[List[str], List[str]]:
+    """
+    Ensemble prediction by averaging probabilities from multiple models
+    
+    Args:
+        models: List of models
+        tokenizers: List of tokenizers (one per model)
+        tokens: List of words
+        label_to_id: BIO label mapping
+        category_to_id: Category mapping
+        id_to_label: Reverse BIO label mapping
+        id_to_category: Reverse category mapping
+        device: torch device
+        pos_tags_list: List of POS tags for each model
+        pos_to_id_list: List of POS mappings for each model
+        use_pos_list: List of use_pos flags for each model
+        language: Language code
+    
+    Returns:
+        Tuple of (bio_tags, categories)
+    """
+    all_bio_probs = []
+    all_category_probs = []
+    
+    # Get predictions from each model
+    for i, (model, tokenizer) in enumerate(zip(models, tokenizers)):
+        bio_probs, cat_probs = predict_with_probabilities(
+            model, tokenizer, tokens, label_to_id, category_to_id, device,
+            pos_tags_list[i], pos_to_id_list[i], use_pos_list[i], language
+        )
+        all_bio_probs.append(bio_probs)
+        all_category_probs.append(cat_probs)
+    
+    # Average probabilities across models
+    avg_bio_probs = np.mean(all_bio_probs, axis=0)  # [seq_len, num_labels]
+    avg_category_probs = np.mean(all_category_probs, axis=0)  # [seq_len, num_categories]
+    
+    # Get predictions from averaged probabilities
+    bio_predictions = np.argmax(avg_bio_probs, axis=-1)
+    category_predictions = np.argmax(avg_category_probs, axis=-1)
+    
+    # Convert to labels
+    bio_tags = [id_to_label[pred_id] for pred_id in bio_predictions]
+    categories = [id_to_category[pred_id] for pred_id in category_predictions]
+    
+    return bio_tags, categories
+
+
+def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None) -> List[str]:
+    """Convert BIO tags to CUPT MWE column format"""
+    VALID_CATEGORIES = {
+        'IAV', 'IRV', 'LVC.cause', 'LVC.full', 'MVC', 'VID',
+        'IVPC.full', 'IVPC.semi', 'AdjID', 'AdpID', 'AdvID', 
+        'ConjID', 'DetID', 'IntjID', 'NID', 'PronID',
+        'AV.LVC.full', 'AV.LVC.cause', 'AV.VID', 'AV.IRV',
+        'AV.IVPC.full', 'AV.IVPC.semi', 'AV.MVC', 'AV.IAV',
+        'NV.LVC.full', 'NV.LVC.cause', 'NV.VID', 'NV.IRV',
+        'NV.IVPC.full', 'NV.IVPC.semi', 'NV.MVC', 'NV.IAV'
+    }
+    
+    mwe_column = ['*'] * len(bio_tags)
+    mwe_id_counter = 1
+    current_mwe_id = None
+    current_category = None
+    
+    for idx, tag in enumerate(bio_tags):
+        if tag == 'B-MWE':
+            current_mwe_id = mwe_id_counter
+            
+            if mwe_categories and idx < len(mwe_categories) and mwe_categories[idx] != 'O':
+                cat = mwe_categories[idx]
+                if cat == 'MWE' or cat not in VALID_CATEGORIES:
+                    cat = 'VID'
+                current_category = cat
+            else:
+                current_category = 'VID'
+            
+            mwe_column[idx] = f'{current_mwe_id}:{current_category}'
+            mwe_id_counter += 1
+            
+        elif tag == 'I-MWE':
+            if current_mwe_id is not None:
+                mwe_column[idx] = str(current_mwe_id)
+        else:
+            current_mwe_id = None
+            current_category = None
+    
+    return mwe_column
+
+
+def ensemble_predict_file(
+    ce_model_path: str,
+    focal_model_path: str,
+    input_file: str,
+    output_file: str,
+    fix_discontinuous: bool = True
+):
+    """
+    Generate ensemble predictions for a CUPT file
+    
+    Args:
+        ce_model_path: Path to Cross-Entropy model
+        focal_model_path: Path to Focal Loss model
+        input_file: Input CUPT file
+        output_file: Output CUPT file
+        fix_discontinuous: Apply discontinuous MWE post-processing
+    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}\n")
+    
+    # Load both models
+    print("="*80)
+    print("LOADING ENSEMBLE MODELS")
+    print("="*80)
+    
+    ce_model, ce_tokenizer, label_to_id, category_to_id, ce_pos_to_id, ce_use_pos, ce_use_lang_tokens, ce_model_name = load_ensemble_model(ce_model_path, device)
+    focal_model, focal_tokenizer, _, _, focal_pos_to_id, focal_use_pos, focal_use_lang_tokens, focal_model_name = load_ensemble_model(focal_model_path, device)
+    
+    id_to_label = {v: k for k, v in label_to_id.items()}
+    id_to_category = {v: k for k, v in category_to_id.items()}
+    
+    # Extract language from input file
+    language = None
+    if ce_use_lang_tokens or focal_use_lang_tokens:
+        parts = input_file.replace('\\', '/').split('/')
+        for lang in ['EGY', 'EL', 'FA', 'FR', 'GRC', 'HE', 'JA', 'KA', 'LV', 'NL', 'PL', 'PT', 'RO', 'SL', 'SR', 'SV', 'UK']:
+            if lang in parts:
+                language = lang
+                print(f"\nDetected language: {language}")
+                break
+    
+    # Read input file and generate predictions
+    print(f"\n{'='*80}")
+    print(f"GENERATING ENSEMBLE PREDICTIONS")
+    print(f"{'='*80}")
+    print(f"Input: {input_file}")
+    
+    predictions_by_sentence = []
+    
+    with open(input_file, 'r', encoding='utf-8') as f:
+        current_tokens = []
+        current_pos_tags = []
+        
+        for line in f:
+            line = line.rstrip('\n')
+            
+            if line.startswith('#'):
+                continue
+            
+            if not line.strip():
+                if current_tokens:
+                    # Ensemble prediction
+                    pred_tags, pred_cats = ensemble_predict(
+                        [ce_model, focal_model],
+                        [ce_tokenizer, focal_tokenizer],
+                        current_tokens,
+                        label_to_id,
+                        category_to_id,
+                        id_to_label,
+                        id_to_category,
+                        device,
+                        [current_pos_tags, current_pos_tags],
+                        [ce_pos_to_id, focal_pos_to_id],
+                        [ce_use_pos, focal_use_pos],
+                        language
+                    )
+                    predictions_by_sentence.append((pred_tags, pred_cats))
+                    current_tokens = []
+                    current_pos_tags = []
+                else:
+                    predictions_by_sentence.append(([], []))
+                continue
+            
+            parts = line.split('\t')
+            if len(parts) < 11:
+                continue
+            
+            token_id = parts[0]
+            if '-' in token_id or '.' in token_id:
+                continue
+            
+            form = parts[1]
+            pos_tag = parts[3]
+            current_tokens.append(form)
+            current_pos_tags.append(pos_tag)
+        
+        if current_tokens:
+            pred_tags, pred_cats = ensemble_predict(
+                [ce_model, focal_model],
+                [ce_tokenizer, focal_tokenizer],
+                current_tokens,
+                label_to_id,
+                category_to_id,
+                id_to_label,
+                id_to_category,
+                device,
+                [current_pos_tags, current_pos_tags],
+                [ce_pos_to_id, focal_pos_to_id],
+                [ce_use_pos, focal_use_pos],
+                language
+            )
+            predictions_by_sentence.append((pred_tags, pred_cats))
+    
+    print(f"Predicted MWEs for {len(predictions_by_sentence)} sentences")
+    
+    # Apply discontinuous MWE fixing
+    if fix_discontinuous:
+        print("Applying discontinuous MWE post-processing...")
+        from postprocess_discontinuous import fix_discontinuous_mwes
+        predictions_by_sentence = fix_discontinuous_mwes(predictions_by_sentence)
+        print("✓ Discontinuous MWE patterns fixed")
+    
+    # Convert to CUPT format
+    print("Converting predictions to CUPT format...")
+    mwe_columns_by_sentence = []
+    
+    for pred_tags, pred_cats in predictions_by_sentence:
+        if len(pred_tags) == 0:
+            mwe_columns_by_sentence.append([])
+        else:
+            mwe_column = bio_tags_to_mwe_column(pred_tags, pred_cats)
+            mwe_columns_by_sentence.append(mwe_column)
+    
+    # Write output file
+    print(f"Writing predictions to: {output_file}")
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    with open(input_file, 'r', encoding='utf-8') as f_in, open(output_file, 'w', encoding='utf-8') as f_out:
+        sentence_idx = 0
+        token_idx_in_sentence = 0
+        
+        for line in f_in:
+            line = line.rstrip('\n')
+            
+            if line.startswith('#'):
+                f_out.write(line + '\n')
+                continue
+            
+            if not line.strip():
+                f_out.write('\n')
+                sentence_idx += 1
+                token_idx_in_sentence = 0
+                continue
+            
+            parts = line.split('\t')
+            if len(parts) < 11:
+                f_out.write(line + '\n')
+                continue
+            
+            token_id = parts[0]
+            if '-' in token_id or '.' in token_id:
+                f_out.write(line + '\n')
+                continue
+            
+            if sentence_idx < len(mwe_columns_by_sentence):
+                mwe_column = mwe_columns_by_sentence[sentence_idx]
+                if token_idx_in_sentence < len(mwe_column):
+                    parts[10] = mwe_column[token_idx_in_sentence]
+                    token_idx_in_sentence += 1
+            
+            f_out.write('\t'.join(parts) + '\n')
+    
+    print(f"\n✓ Ensemble predictions saved to: {output_file}")
+
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Ensemble prediction for MWE identification')
+    parser.add_argument('--ce_model', type=str, required=True, help='Path to Cross-Entropy model (best_model.pt)')
+    parser.add_argument('--focal_model', type=str, required=True, help='Path to Focal Loss model (best_model.pt)')
+    parser.add_argument('--input', type=str, required=True, help='Input CUPT file')
+    parser.add_argument('--output', type=str, required=True, help='Output CUPT file')
+    parser.add_argument('--no_fix_discontinuous', action='store_true', help='Disable discontinuous MWE post-processing')
+    
+    args = parser.parse_args()
+    
+    ensemble_predict_file(
+        args.ce_model,
+        args.focal_model,
+        args.input,
+        args.output,
+        fix_discontinuous=not args.no_fix_discontinuous
+    )
