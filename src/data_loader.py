@@ -13,9 +13,13 @@ class CUPTDataLoader:
     def __init__(self):
         self.mwe_categories = set()
         
-    def read_cupt_file(self, filepath: str) -> List[Dict]:
+    def read_cupt_file(self, filepath: str, language: str = None) -> List[Dict]:
         """
         Read a .cupt file and return list of sentences with tokens and MWE annotations
+        
+        Args:
+            filepath: Path to .cupt file
+            language: Language code (e.g., 'FR', 'PL') for language-conditioned inputs
         
         Returns:
             List of sentences, each sentence is a dict with:
@@ -24,14 +28,26 @@ class CUPTDataLoader:
             - 'pos_tags': list of POS tags
             - 'mwe_tags': list of BIO tags for MWEs
             - 'mwe_categories': list of MWE category labels
+            - 'language': language code (if provided)
         """
+        # Extract language from filepath if not provided
+        if language is None:
+            # Try to extract from path like "2.0/subtask1/FR/train.cupt"
+            import os
+            parts = filepath.split(os.sep)
+            for i, part in enumerate(parts):
+                if part in ['EGY', 'EL', 'FA', 'FR', 'GRC', 'HE', 'JA', 'KA', 'LV', 'NL', 'PL', 'PT', 'RO', 'SL', 'SR', 'SV', 'UK']:
+                    language = part
+                    break
+        
         sentences = []
         current_sentence = {
             'tokens': [],
             'lemmas': [],
             'pos_tags': [],
             'mwe_raw': [],  # Raw MWE column
-            'text': ''
+            'text': '',
+            'language': language
         }
         
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -55,7 +71,8 @@ class CUPTDataLoader:
                             'lemmas': [],
                             'pos_tags': [],
                             'mwe_raw': [],
-                            'text': ''
+                            'text': '',
+                            'language': language
                         }
                     continue
                 

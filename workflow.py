@@ -27,7 +27,7 @@ def print_options():
     print()
 
 
-def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, output_base='models', model_name='bert-base-multilingual-cased'):
+def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, use_lang_tokens=False, output_base='models', model_name='bert-base-multilingual-cased'):
     """Train model on specified language(s)"""
     # Handle both single language string and list of languages
     if isinstance(languages, str):
@@ -80,6 +80,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         cmd = f"python src/train.py --train {train_files_str} --dev {dev_files_str} --output {output_dir} --epochs {epochs} --batch_size {batch_size} --sample_ratio {sample_ratio} --model_name {model_name}"
         if use_pos:
             cmd += " --pos"
+        if use_lang_tokens:
+            cmd += " --lang_tokens"
         result = os.system(cmd)
         
         if result == 0:
@@ -116,6 +118,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
             cmd = f"python src/train.py --train {train_file} --dev {dev_file} --output {output_dir} --epochs {epochs} --batch_size {batch_size} --sample_ratio {sample_ratio} --model_name {model_name}"
             if use_pos:
                 cmd += " --pos"
+            if use_lang_tokens:
+                cmd += " --lang_tokens"
             result = os.system(cmd)
             
             if result == 0:
@@ -265,6 +269,8 @@ Available languages:
                        help='Train single multilingual model on all specified languages combined')
     parser.add_argument('--pos', action='store_true',
                        help='Enable POS tag feature injection for improved performance')
+    parser.add_argument('--lang_tokens', action='store_true',
+                       help='Enable language-conditioned inputs (prepend [LANG] tokens to prevent language interference)')
     parser.add_argument('--output', type=str, default='models',
                        help='Base output directory for saving models (default: models)')
     parser.add_argument('--model_name', type=str, default='bert-base-multilingual-cased',
@@ -277,7 +283,7 @@ Available languages:
     print_banner()
     
     if args.command == 'train':
-        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.output, args.model_name)
+        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.lang_tokens, args.output, args.model_name)
     elif args.command == 'predict':
         # For predict, visualize, summary - use first language if multiple specified
         language = args.languages[0] if args.languages else 'FR'

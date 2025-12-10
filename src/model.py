@@ -98,9 +98,24 @@ class MWEIdentificationModel(nn.Module):
 class MWETokenizer:
     """Tokenizer wrapper that handles subword alignment for MWE tagging"""
     
-    def __init__(self, model_name: str = 'bert-base-multilingual-cased'):
+    # 17 language codes for PARSEME 2.0
+    LANGUAGE_CODES = ['EGY', 'EL', 'FA', 'FR', 'GRC', 'HE', 'JA', 'KA', 'LV', 'NL', 'PL', 'PT', 'RO', 'SL', 'SR', 'SV', 'UK']
+    
+    def __init__(self, model_name: str = 'bert-base-multilingual-cased', use_lang_tokens: bool = False):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.use_lang_tokens = use_lang_tokens
         
+        # Add language tokens if enabled
+        if self.use_lang_tokens:
+            lang_tokens = [f'[{lang}]' for lang in self.LANGUAGE_CODES]
+            num_added = self.tokenizer.add_special_tokens({'additional_special_tokens': lang_tokens})
+            if num_added > 0:
+                print(f"Added {num_added} language tokens to tokenizer")
+    
+    def get_tokenizer(self):
+        """Return the underlying HuggingFace tokenizer"""
+        return self.tokenizer
+    
     def tokenize_and_align_labels(
         self, 
         tokens: List[str], 
@@ -110,7 +125,8 @@ class MWETokenizer:
         category_to_id: Optional[Dict[str, int]] = None,
         pos_tags: Optional[List[str]] = None,
         pos_to_id: Optional[Dict[str, int]] = None,
-        max_length: int = 512
+        max_length: int = 512,
+        language: Optional[str] = None
     ) -> Dict:
         """
         Tokenize words and align BIO labels, categories, and POS tags to subword tokens
@@ -124,19 +140,51 @@ class MWETokenizer:
             pos_tags: List of POS tags (optional, for feature injection)
             pos_to_id: Mapping from POS tag to ID (optional)
             max_length: Maximum sequence length
+            language: Language code (optional, for language-conditioned inputs)
         
         Returns:
             Dictionary with input_ids, attention_mask, aligned labels, category labels, and POS IDs
         """
-        # Tokenize with word alignment
-        tokenized = self.tokenizer(
-            tokens,
-            is_split_into_words=True,
-            max_length=max_length,
-            padding='max_length',
-            truncation=True,
-            return_tensors='pt'
-        )
+        # Prepend language token if enabled
+        if self.use_lang_tokens and language:
+            lang_token = f'[{language}]'
+            # Prepend language token to the token list
+            tokens_with_lang = [lang_token] + list(tokens)
+            labels_with_lang = ['O'] + list(labels)  # Language token gets 'O' label
+            if categories:
+                categories_with_lang = ['VID'] + list(categories)  # Dummy category for lang token
+            else:
+                categories_with_lang = None
+            if pos_tags:
+                pos_tags_with_lang = ['X'] + list(pos_tags)  # Dummy POS for lang token
+            else:
+                pos_tags_with_lang = None
+            
+            # Tokenize with language token prepended
+            tokenized = self.tokenizer(
+                tokens_with_lang,
+                is_split_into_words=True,
+                max_length=max_length,
+                padding='max_length',
+                truncation=True,
+                return_tensors='pt'
+            )
+            
+            # Use the labels/categories/pos with language token prepended
+            tokens = tokens_with_lang
+            labels = labels_with_lang
+            categories = categories_with_lang if categories_with_lang else categories
+            pos_tags = pos_tags_with_lang if pos_tags_with_lang else pos_tags
+        else:
+            # Standard tokenization
+            tokenized = self.tokenizer(
+                tokens,
+                is_split_into_words=True,
+                max_length=max_length,
+                padding='max_length',
+                truncation=True,
+                return_tensors='pt'
+            )
         
         # Align labels and POS tags to subword tokens
         word_ids = tokenized.word_ids(batch_index=0)
@@ -231,7 +279,8 @@ def predict_mwe_tags(
     device: torch.device,
     pos_tags: List[str] = None,
     pos_to_id: Dict[str, int] = None,
-    use_pos: bool = False
+    use_pos: bool = False,
+    language: str = None
 ) -> Tuple[List[str], List[str]]:
     """
     Predict MWE tags and categories for a sentence
@@ -243,6 +292,10 @@ def predict_mwe_tags(
         id_to_label: Mapping from label ID to BIO tag string
         id_to_category: Mapping from category ID to category string
         device: torch device
+        pos_tags: List of POS tags (optional)
+        pos_to_id: Mapping from POS tag to ID (optional)
+        use_pos: Whether POS features are used
+        language: Language code for language-conditioned inputs (optional)
     
     Returns:
         Tuple of (bio_tags, categories)
@@ -259,7 +312,7 @@ def predict_mwe_tags(
     tokenized = tokenizer.tokenize_and_align_labels(
         tokens, dummy_labels, label_to_id,
         dummy_categories, category_to_id,
-        pos_tags, pos_to_id
+        pos_tags, pos_to_id, 512, language
     )
     
     input_ids = tokenized['input_ids'].to(device)

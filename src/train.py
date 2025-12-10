@@ -39,11 +39,12 @@ class MWEDataset(Dataset):
         labels = sentence['mwe_tags']
         categories = sentence['mwe_categories']
         pos_tags = sentence.get('pos_tags', None)
+        language = sentence.get('language', None)
         
         # Tokenize and align labels
         tokenized = self.tokenizer.tokenize_and_align_labels(
             tokens, labels, self.label_to_id, categories, self.category_to_id, 
-            pos_tags, self.pos_to_id, self.max_length
+            pos_tags, self.pos_to_id, self.max_length, language
         )
         
         return {
@@ -172,7 +173,8 @@ def train_mwe_model(
     max_length: int = 512,
     seed: int = 42,
     sample_ratio: float = 1.0,
-    use_pos: bool = False
+    use_pos: bool = False,
+    use_lang_tokens: bool = False
 ):
     """
     Train MWE identification model
@@ -188,6 +190,8 @@ def train_mwe_model(
         max_length: Maximum sequence length
         seed: Random seed
         sample_ratio: Ratio of training data to use (0.0-1.0, default: 1.0)
+        use_pos: Enable POS feature injection
+        use_lang_tokens: Enable language-conditioned inputs (prepend [LANG] tokens)
     """
     # Set random seeds
     torch.manual_seed(seed)
@@ -286,7 +290,7 @@ def train_mwe_model(
     
     # Initialize tokenizer and model
     print(f"\nInitializing model: {model_name}")
-    tokenizer = MWETokenizer(model_name)
+    tokenizer = MWETokenizer(model_name, use_lang_tokens=use_lang_tokens)
     model = MWEIdentificationModel(
         model_name, 
         num_labels=len(label_to_id), 
@@ -294,6 +298,15 @@ def train_mwe_model(
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
         use_pos=use_pos
     )
+    
+    # Resize token embeddings if language tokens were added
+    if use_lang_tokens:
+        model.transformer.resize_token_embeddings(len(tokenizer.get_tokenizer()))
+        print(f"✓ Language-conditioned inputs ENABLED")
+        print(f"  Resized embeddings to {len(tokenizer.get_tokenizer())} tokens")
+    else:
+        print(f"✗ Language-conditioned inputs DISABLED (use --lang_tokens to enable)")
+    
     model.to(device)
     
     # Create datasets
@@ -398,7 +411,8 @@ def train_mwe_model(
                     'category_to_id': category_to_id,
                     'pos_to_id': pos_to_id,
                     'model_name': model_name,
-                    'use_pos': use_pos
+                    'use_pos': use_pos,
+                    'use_lang_tokens': use_lang_tokens
                 }, model_path)
                 print(f"✓ Model saved successfully")
                 
@@ -438,6 +452,7 @@ def train_mwe_model(
         'lr': learning_rate,
         'batch_size': batch_size,
         'use_pos': use_pos,
+        'use_lang_tokens': use_lang_tokens,
         'model_name': model_name,
         'best_f1': best_f1,
         'num_labels': len(label_to_id),
@@ -521,6 +536,8 @@ if __name__ == '__main__':
                        help='Ratio of training data to use (0.0-1.0, default: 1.0)')
     parser.add_argument('--pos', action='store_true', 
                        help='Enable POS tag feature injection (improves performance by 3-5%%)')
+    parser.add_argument('--lang_tokens', action='store_true',
+                       help='Enable language-conditioned inputs (prepend [LANG] tokens to prevent language interference)')
     
     args = parser.parse_args()
     
@@ -535,5 +552,6 @@ if __name__ == '__main__':
         max_length=args.max_length,
         seed=args.seed,
         sample_ratio=args.sample_ratio,
-        use_pos=args.pos
+        use_pos=args.pos,
+        use_lang_tokens=args.lang_tokens
     )

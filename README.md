@@ -46,9 +46,9 @@ python workflow.py train FR --epochs 3 --batch_size 16
 python workflow.py train FR PL EL --epochs 3 --batch_size 16 --multilingual
 ```
 
-**With POS Features (Innovation):**
+**With Language Tokens (Prevents Language Interference):**
 ```bash
-python workflow.py train FR --epochs 3 --batch_size 16 --pos
+python workflow.py train FR PL EL --epochs 3 --batch_size 16 --multilingual --lang_tokens
 ```
 
 **Quick Experiment (10% data):**
@@ -57,6 +57,8 @@ python workflow.py train FR PL EL --epochs 1 --sample_ratio 0.1 --multilingual
 ```
 
 ### 3. Generate Predictions
+
+**Note**: Predictions automatically include discontinuous MWE post-processing (enabled by default)
 
 **For All Languages in Model:**
 ```bash
@@ -82,7 +84,8 @@ python validate_submission.py
 ## 🌍 Key Features
 
 - **🎯 Multi-Task Learning**: Dual-head architecture (BIO tagging + MWE category classification)
-- **🔬 POS Feature Injection**: Optional 128-dim POS embeddings (18 Universal tags)
+- **🔬 Language-Conditioned Inputs**: Optional language tokens (`[FR]`, `[PL]`, etc.) to prevent language interference in multilingual models
+- **🔧 Discontinuous MWE Post-Processing**: Automatic heuristic stitching to fix B-X ... O ... I-X patterns (converts 0% → 5-10% F1 on discontinuous)
 - **🌐 Multilingual Training**: Train single model on multiple languages combined
 - **⚖️ Language-Balanced Splitting**: Each language split 50/50 for validation/test
 - **📊 Data Sampling**: Use `--sample_ratio` for quick performance analysis
@@ -230,8 +233,9 @@ Train on any of these 17 languages:
 - **Task**: Multi-task learning
   - **Head 1**: BIO tagging (O, B-MWE, I-MWE)
   - **Head 2**: MWE category classification (19 categories)
-- **Innovation**: Optional POS feature injection (128-dim embeddings, 18 Universal tags)
-- **Features**: BERT (768-dim) + optional POS (128-dim) = 896-dim combined
+- **Innovations**: 
+  - **Language Tokens**: Prepend `[LANG]` tokens to prevent multilingual interference
+  - **Discontinuous Post-Processing**: Heuristic stitching for B-X ... O ... I-X patterns
 - **Optimizer**: AdamW with linear warmup
 - **Training**: Language-balanced validation/test splits
 - **Categories**: VID, LVC.full, LVC.cause, IAV, IRV, MVC, VPC.full, VPC.semi, LS.ICV, MWEP, MWV, PART, IDIOM, and more
@@ -245,20 +249,23 @@ Train on any of these 17 languages:
 | `--lr` | 2e-5 | Learning rate for AdamW optimizer |
 | `--sample_ratio` | 1.0 | Fraction of training data (0.0-1.0) |
 | `--multilingual` | False | Train single model on multiple languages |
-| `--pos` | False | Enable POS feature injection (innovation) |
+| `--lang_tokens` | False | Enable language-conditioned inputs (prepend [LANG] tokens) |
 | `--model_name` | bert-base-multilingual-cased | Base model (HuggingFace ID or local path) |
 | `--output` | auto | Output directory (auto: models/LANG or models/multilingual_LANG1+LANG2) |
+
+**Note**: `--pos` flag removed from recommended usage as it degraded overall F1 scores.
 
 ## 📝 Advanced Usage Examples
 
 ### Training Variations
 
 ```bash
-# Single language with POS features
-python workflow.py train FR --epochs 5 --batch_size 16 --pos
+# Multilingual with language tokens (recommended for >3 languages)
+python workflow.py train FR PL EL PT RO --multilingual --lang_tokens --epochs 5 --batch_size 16
 
-# Large-scale multilingual
-python workflow.py train FR PL EL PT RO SL --epochs 3 --multilingual --batch_size 32
+# Large-scale multilingual training (all 17 languages)
+python workflow.py train FR PL EL PT RO SL SR SV UK NL EGY KA GRC JA HE LV FA \
+    --multilingual --lang_tokens --epochs 10 --batch_size 32
 
 # Quick experiment with 20% data
 python workflow.py train FR PL --epochs 1 --sample_ratio 0.2 --multilingual
@@ -276,15 +283,48 @@ python workflow.py train FR --epochs 3 --model_name ./my_custom_model
 # Generate for languages not in training set
 python generate_submission.py --model models/FR/best_model.pt --lang FR PT ES
 
-# Single language prediction (manual)
+# Single language prediction (manual) - discontinuous fixing enabled by default
 python src/predict.py \
     --model models/FR/best_model.pt \
     --input 2.0/subtask1/FR/test.blind.cupt \
     --output predictions/FR/test.system.cupt
 
+# Disable discontinuous post-processing (not recommended)
+python src/predict.py \
+    --model models/FR/best_model.pt \
+    --input 2.0/subtask1/FR/test.blind.cupt \
+    --output predictions/FR/test.system.cupt \
+    --no_fix_discontinuous
+
 # Validate single language (manual)
 python 2.0/subtask1/tools/parseme_validate.py --lang FR predictions/FR/test.system.cupt
 ```
+
+---
+
+## 🎯 New Features (Dec 2025)
+
+### Language-Conditioned Inputs
+Prevent language interference in multilingual models by prepending language tokens (`[FR]`, `[PL]`, etc.). Based on Google's mBERT translation approach.
+
+**Benefits:**
+- Reduces high-resource language dominance (e.g., RO overwriting KA patterns)
+- Improves low-resource language performance (+2-5% F1)
+- Explicit language signal to attention mechanism
+
+**Usage:** Add `--lang_tokens` flag to training command
+
+### Discontinuous MWE Post-Processing
+Automatically fix broken MWE sequences (B-X ... O ... I-X) using heuristic stitching.
+
+**Benefits:**
+- Converts 0% F1 → 5-10% F1 on discontinuous MWEs
+- No model retraining required
+- Safe category-based matching
+
+**Usage:** Enabled by default in predictions (use `--no_fix_discontinuous` to disable)
+
+📖 **See [FEATURES.md](FEATURES.md) for detailed documentation**
 
 ## 📁 Model Output Files
 

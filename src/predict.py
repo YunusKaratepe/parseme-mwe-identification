@@ -72,7 +72,8 @@ def predict_cupt_file(
     model_path: str,
     input_file: str,
     output_file: str,
-    device: torch.device = None
+    device: torch.device = None,
+    fix_discontinuous: bool = True
 ):
     """
     Predict MWE annotations for a CUPT file
@@ -82,6 +83,7 @@ def predict_cupt_file(
         input_file: Path to input .cupt file (with empty MWE column)
         output_file: Path to output .cupt file (with predicted MWE annotations)
         device: torch device
+        fix_discontinuous: Apply heuristic stitching for discontinuous MWEs (default: True)
     """
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -97,6 +99,7 @@ def predict_cupt_file(
     category_to_id = checkpoint['category_to_id']
     pos_to_id = checkpoint.get('pos_to_id', None)
     use_pos = checkpoint.get('use_pos', False)
+    use_lang_tokens = checkpoint.get('use_lang_tokens', False)
     id_to_label = {v: k for k, v in label_to_id.items()}
     id_to_category = {v: k for k, v in category_to_id.items()}
     
@@ -115,20 +118,43 @@ def predict_cupt_file(
         use_pos=use_pos
     )
     model.load_state_dict(checkpoint['model_state_dict'])
+    
+    # Resize token embeddings if language tokens were used during training
+    if use_lang_tokens:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
+        else:
+            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
+        model.transformer.resize_token_embeddings(len(tokenizer.get_tokenizer()))
+    else:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path)
+        else:
+            tokenizer = MWETokenizer(model_name)
+    
     model.to(device)
     model.eval()
     
     print(f"POS feature injection: {'ENABLED' if use_pos else 'DISABLED'}")
-    
-    # Initialize tokenizer
-    tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
-    if os.path.exists(tokenizer_path):
-        tokenizer = MWETokenizer(tokenizer_path)
-    else:
-        tokenizer = MWETokenizer(model_name)
+    print(f"Language-conditioned inputs: {'ENABLED' if use_lang_tokens else 'DISABLED'}")
     
     print(f"Model loaded. Best F1: {checkpoint.get('best_f1', 'N/A')}")
     print(f"Categories: {len(category_to_id)} types")
+    
+    # Extract language from input file path
+    language = None
+    if use_lang_tokens:
+        # Try to extract from path like "2.0/subtask1/FR/test.blind.cupt"
+        parts = input_file.replace('\\', '/').split('/')
+        for lang in ['EGY', 'EL', 'FA', 'FR', 'GRC', 'HE', 'JA', 'KA', 'LV', 'NL', 'PL', 'PT', 'RO', 'SL', 'SR', 'SV', 'UK']:
+            if lang in parts:
+                language = lang
+                print(f"Detected language: {language}")
+                break
+        if language is None:
+            print("WARNING: Could not detect language from file path, language tokens will not be used")
     
     # Read input file
     print(f"\nReading input file: {input_file}")
@@ -137,7 +163,6 @@ def predict_cupt_file(
     
     with open(input_file, 'r', encoding='utf-8') as f:
         current_tokens = []
-        current_pos_tags = []
         current_pos_tags = []
         
         for line in f:
@@ -151,13 +176,13 @@ def predict_cupt_file(
             if not line.strip():
                 if current_tokens:
                     # Predict for this sentence (returns bio_tags and categories)
-                    pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device, current_pos_tags, pos_to_id, use_pos)
+                    pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device, current_pos_tags, pos_to_id, use_pos, language)
                     predictions_by_sentence.append((pred_tags, pred_cats))
                     current_tokens = []
                     current_pos_tags = []
-                    current_pos_tags = []
                 else:
-                    predictions_by_sentence.append([])
+                    # Empty sentence (comment-only)
+                    predictions_by_sentence.append(([], []))
                 continue
             
             # Parse token line
@@ -178,10 +203,17 @@ def predict_cupt_file(
         
         # Don't forget last sentence
         if current_tokens:
-            pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device)
+            pred_tags, pred_cats = predict_mwe_tags(model, tokenizer, current_tokens, id_to_label, id_to_category, device, current_pos_tags, pos_to_id, use_pos, language)
             predictions_by_sentence.append((pred_tags, pred_cats))
     
     print(f"Predicted MWEs for {len(predictions_by_sentence)} sentences")
+    
+    # Apply discontinuous MWE fixing if enabled
+    if fix_discontinuous:
+        print("Applying discontinuous MWE post-processing...")
+        from postprocess_discontinuous import fix_discontinuous_mwes
+        predictions_by_sentence = fix_discontinuous_mwes(predictions_by_sentence)
+        print("✓ Discontinuous MWE patterns fixed")
     
     # Convert predictions to MWE column format
     print("Converting predictions to CUPT format...")
@@ -230,8 +262,10 @@ def predict_cupt_file(
             # Regular token: add prediction
             token_idx += 1
             
-            if sentence_idx + 1 < len(mwe_columns_by_sentence) and token_idx < len(mwe_columns_by_sentence[sentence_idx + 1]):
-                mwe_annotation = mwe_columns_by_sentence[sentence_idx + 1][token_idx]
+            # sentence_idx points to last completed sentence, so current sentence is at sentence_idx + 1
+            current_sent_idx = sentence_idx + 1
+            if current_sent_idx < len(mwe_columns_by_sentence) and token_idx < len(mwe_columns_by_sentence[current_sent_idx]):
+                mwe_annotation = mwe_columns_by_sentence[current_sent_idx][token_idx]
                 parts[10] = mwe_annotation
             else:
                 parts[10] = '*'
@@ -248,7 +282,9 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, required=True, help='Path to model checkpoint')
     parser.add_argument('--input', type=str, required=True, help='Path to input .cupt file')
     parser.add_argument('--output', type=str, required=True, help='Path to output .cupt file')
+    parser.add_argument('--no_fix_discontinuous', action='store_true',
+                       help='Disable discontinuous MWE post-processing (enabled by default)')
     
     args = parser.parse_args()
     
-    predict_cupt_file(args.model, args.input, args.output)
+    predict_cupt_file(args.model, args.input, args.output, fix_discontinuous=not args.no_fix_discontinuous)
