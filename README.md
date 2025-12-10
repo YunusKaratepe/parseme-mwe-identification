@@ -80,6 +80,8 @@ python validate_submission.py
 
 - **🎯 Multi-Task Learning**: Dual-head architecture (BIO tagging + MWE category classification)
 - **🔬 Language-Conditioned Inputs**: Optional language tokens (`[FR]`, `[PL]`, etc.) to prevent language interference in multilingual models
+- **🎲 Focal Loss**: Addresses class imbalance (90% O tags vs 10% B/I-MWE tags) by focusing on hard examples
+- **🤝 Ensemble Predictions**: Combine Cross-Entropy and Focal Loss models for better performance
 - **🔧 Discontinuous MWE Post-Processing**: Automatic heuristic stitching to fix B-X ... O ... I-X patterns (converts 0% → 5-10% F1 on discontinuous)
 - **🌐 Multilingual Training**: Train single model on multiple languages combined
 - **⚖️ Language-Balanced Splitting**: Each language split 50/50 for validation/test
@@ -94,71 +96,85 @@ python validate_submission.py
 
 ### Step 1: Training
 
-The training process creates a model directory with three key files:
-
+**Standard Training:**
 ```bash
-# Train with default settings
-python workflow.py train FR PL EL --epochs 3 --multilingual
+# Train with Cross-Entropy loss (default)
+python workflow.py train FR PL EL --epochs 3 --multilingual --lang_tokens
 
-# Train with POS features
-python workflow.py train FR --epochs 3 --pos
+# Train with Focal Loss (handles class imbalance)
+python workflow.py train FR PL EL --epochs 3 --multilingual --lang_tokens --loss focal
+```
+
+**For Ensemble (train both):**
+```bash
+# Train CE model
+python workflow.py train FR PL EL PT RO SL SR SV UK NL EGY KA JA HE LV FA \
+    --multilingual --lang_tokens --loss ce --epochs 10 --output ensemble/ce
+
+# Train Focal model
+python workflow.py train FR PL EL PT RO SL SR SV UK NL EGY KA JA HE LV FA \
+    --multilingual --lang_tokens --loss focal --epochs 10 --output ensemble/focal
 ```
 
 **Output Directory Structure:**
 ```
-models/multilingual_FR+PL+EL/
+models/multilingual_FR+PL+EL/  (or ensemble/ce/multilingual_XXX/)
 ├── best_model.pt           # Model checkpoint
 ├── training_history.json   # Loss/metrics per epoch
-└── info.json               # Training metadata
-```
-
-**info.json contents:**
-```json
-{
-  "languages": ["FR", "PL", "EL"],
-  "sample_ratio": 1.0,
-  "epochs": 3,
-  "lr": 2e-05,
-  "batch_size": 16,
-  "use_pos": false,
-  "model_name": "bert-base-multilingual-cased",
-  "best_f1": 0.7437,
-  "num_labels": 3,
-  "num_categories": 19,
-  "seed": 42,
-  "max_length": 512
-}
+├── info.json               # Training metadata (includes loss_type)
+└── tokenizer/              # Tokenizer files (if lang_tokens used)
 ```
 
 ### Step 2: Generate Predictions
 
-The `generate_submission.py` script handles prediction generation for multiple languages:
-
+**Single Model:**
 ```bash
-# Auto-detect languages from model (reads info.json)
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt
-
-# Generate for specific languages only
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt --lang FR PL
-
-# Generate for ALL 17 available languages
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt --lang all
-
-# Skip zip creation (only generate predictions)
-python generate_submission.py --model models/multilingual_FR+PL+EL/best_model.pt --no-zip
+python generate_submission.py --model models/multilingual_XXX/best_model.pt --lang FR PL EL
 ```
+
+**Ensemble (Recommended):**
+```bash
+python generate_submission.py \
+    --model ensemble/ce/multilingual_XXX/best_model.pt \
+    --focal_model ensemble/focal/multilingual_XXX/best_model.pt \
+    --lang FR PL EL PT RO SL SR SV UK NL EGY KA JA HE LV FA \
+    --zip ensemble_submission.zip
+```
+
+**How Ensemble Works:**
+- Averages probability distributions from CE and Focal Loss models
+- CE model: Better precision on common patterns
+- Focal Loss model: Better recall on rare categories (e.g., LVC.cause)
+- Combined: Covers each other's blind spots for optimal performance
 
 **Output Structure:**
 ```
 predictions/
 ├── FR/test.system.cupt
 ├── PL/test.system.cupt
-├── EL/test.system.cupt
 └── ...
-submission.zip              # Ready for submission
+ensemble_submission.zip     # Ready for submission
 ```
 
-### Step 3: Validate Predictions
+### Step 3: Evaluate Ensemble (Optional)
+
+Evaluate ensemble performance on validation/test sets:
+
+```bash
+python src/ensemble_evaluate.py \
+    --ce_model_dir ensemble/ce/multilingual_XXX \
+    --focal_model_dir ensemble/focal/multilingual_XXX \
+    --languages FR PL EL PT RO \
+    --output ensemble
+```
+
+Results saved to `ensemble/evaluation_results.json` with:
+- Overall Precision/Recall/F1
+- Discontinuous MWE F1
+- Per-category performance
+- Average metrics across languages
+
+### Step 4: Validate Predictions
 
 Before submitting, validate all predictions at once:
 
@@ -192,9 +208,9 @@ Failed: 0
    Your submission is ready!
 ```
 
-### Step 4: Submit
+### Step 5: Submit
 
-Your `submission.zip` is ready! It contains:
+Your `submission.zip` (or `ensemble_submission.zip`) is ready! It contains:
 ```
 FR/test.system.cupt
 PL/test.system.cupt
@@ -227,13 +243,16 @@ Train on any of these 17 languages:
 - **Base Model**: bert-base-multilingual-cased (110M parameters)
 - **Task**: Multi-task learning
   - **Head 1**: BIO tagging (O, B-MWE, I-MWE)
-  - **Head 2**: MWE category classification (19 categories)
+  - **Head 2**: MWE category classification (19+ categories)
+- **Loss Functions**:
+  - **Cross-Entropy** (default): Standard classification loss
+  - **Focal Loss**: Addresses class imbalance (α=1.0, γ=2.0) - down-weights easy examples
 - **Innovations**: 
   - **Language Tokens**: Prepend `[LANG]` tokens to prevent multilingual interference
   - **Discontinuous Post-Processing**: Heuristic stitching for B-X ... O ... I-X patterns
+  - **Ensemble**: Probability averaging from CE + Focal models
 - **Optimizer**: AdamW with linear warmup
 - **Training**: Language-balanced validation/test splits
-- **Categories**: VID, LVC.full, LVC.cause, IAV, IRV, MVC, VPC.full, VPC.semi, LS.ICV, MWEP, MWV, PART, IDIOM, and more
 
 ## 🔧 Training Parameters
 
@@ -245,10 +264,9 @@ Train on any of these 17 languages:
 | `--sample_ratio` | 1.0 | Fraction of training data (0.0-1.0) |
 | `--multilingual` | False | Train single model on multiple languages |
 | `--lang_tokens` | False | Enable language-conditioned inputs (prepend [LANG] tokens) |
+| `--loss` | ce | Loss function: 'ce' (Cross-Entropy) or 'focal' (Focal Loss) |
 | `--model_name` | bert-base-multilingual-cased | Base model (HuggingFace ID or local path) |
-| `--output` | auto | Output directory (auto: models/LANG or models/multilingual_LANG1+LANG2) |
-
-**Note**: `--pos` flag removed from recommended usage as it degraded overall F1 scores.
+| `--output` | models | Output directory base |
 
 ## 📝 Advanced Usage Examples
 
@@ -258,58 +276,62 @@ Train on any of these 17 languages:
 # Multilingual with language tokens (recommended for >3 languages)
 python workflow.py train FR PL EL PT RO --multilingual --lang_tokens --epochs 5 --batch_size 16
 
-# Large-scale multilingual training (all 17 languages)
-python workflow.py train FR PL EL PT RO SL SR SV UK NL EGY KA GRC JA HE LV FA \
-    --multilingual --lang_tokens --epochs 10 --batch_size 32
+# With Focal Loss for class imbalance
+python workflow.py train FR PL EL --multilingual --lang_tokens --loss focal --epochs 10
+
+# Train both for ensemble
+python workflow.py train FR PL EL --multilingual --lang_tokens --loss ce --epochs 10 --output ensemble/ce
+python workflow.py train FR PL EL --multilingual --lang_tokens --loss focal --epochs 10 --output ensemble/focal
 
 # Quick experiment with 20% data
 python workflow.py train FR PL --epochs 1 --sample_ratio 0.2 --multilingual
-
-# Custom output directory
-python workflow.py train FR --epochs 3 --output experiments/french_v1
-
-# Custom base model
-python workflow.py train FR --epochs 3 --model_name ./my_custom_model
 ```
 
-### Prediction Variations
+### Ensemble Operations
 
 ```bash
-# Generate for languages not in training set
-python generate_submission.py --model models/FR/best_model.pt --lang FR PT ES
+# Generate ensemble submission
+python generate_submission.py \
+    --model ensemble/ce/multilingual_XXX/best_model.pt \
+    --focal_model ensemble/focal/multilingual_XXX/best_model.pt \
+    --lang all \
+    --zip ensemble_submission.zip
 
-# Single language prediction (manual) - discontinuous fixing enabled by default
-python src/predict.py \
-    --model models/FR/best_model.pt \
-    --input 2.0/subtask1/FR/test.blind.cupt \
-    --output predictions/FR/test.system.cupt
-
-# Disable discontinuous post-processing (not recommended)
-python src/predict.py \
-    --model models/FR/best_model.pt \
-    --input 2.0/subtask1/FR/test.blind.cupt \
-    --output predictions/FR/test.system.cupt \
-    --no_fix_discontinuous
-
-# Validate single language (manual)
-python 2.0/subtask1/tools/parseme_validate.py --lang FR predictions/FR/test.system.cupt
+# Evaluate ensemble performance
+python src/ensemble_evaluate.py \
+    --ce_model_dir ensemble/ce/multilingual_XXX \
+    --focal_model_dir ensemble/focal/multilingual_XXX \
+    --languages FR PL EL PT RO SL SR SV UK \
+    --output ensemble
 ```
 
 ---
 
-## 🎯 New Features (Dec 2025)
+## 🎯 Key Innovations
 
-### Language-Conditioned Inputs
-Prevent language interference in multilingual models by prepending language tokens (`[FR]`, `[PL]`, etc.). Based on Google's mBERT translation approach.
+### 1. Language-Conditioned Inputs
+Prevent language interference in multilingual models by prepending language tokens (`[FR]`, `[PL]`, etc.).
 
 **Benefits:**
-- Reduces high-resource language dominance (e.g., RO overwriting KA patterns)
+- Reduces high-resource language dominance
 - Improves low-resource language performance (+2-5% F1)
 - Explicit language signal to attention mechanism
 
-**Usage:** Add `--lang_tokens` flag to training command
+**Usage:** Add `--lang_tokens` flag
 
-### Discontinuous MWE Post-Processing
+### 2. Focal Loss for Class Imbalance
+Addresses the 90% O-tag vs 10% B/I-MWE imbalance by down-weighting easy examples.
+
+**Formula:** `-α(1-p_t)^γ log(p_t)` with α=1.0, γ=2.0
+
+**Benefits:**
+- Forces model to focus on hard MWE tags
+- Better recall on rare categories (e.g., LVC.cause)
+- Useful for ensemble diversity
+
+**Usage:** Add `--loss focal` flag
+
+### 3. Discontinuous MWE Post-Processing
 Automatically fix broken MWE sequences (B-X ... O ... I-X) using heuristic stitching.
 
 **Benefits:**
@@ -317,7 +339,22 @@ Automatically fix broken MWE sequences (B-X ... O ... I-X) using heuristic stitc
 - No model retraining required
 - Safe category-based matching
 
-**Usage:** Enabled by default in predictions (use `--no_fix_discontinuous` to disable)
+**Usage:** Enabled by default in predictions
+
+### 4. Ensemble Predictions
+Combine CE and Focal Loss models via probability averaging.
+
+**How It Works:**
+- CE model: Better precision on common patterns (VID, LVC.full)
+- Focal model: Better recall on rare categories (LVC.cause, IRV)
+- Ensemble: Averages softmax outputs before argmax
+
+**Benefits:**
+- Covers blind spots of individual models
+- More robust predictions
+- Better overall F1 score
+
+**Usage:** Use `--focal_model` in `generate_submission.py`
 
 📖 **See [FEATURES.md](FEATURES.md) for detailed documentation**
 
@@ -327,61 +364,21 @@ After training, your model directory contains:
 
 | File | Description |
 |------|-------------|
-| `best_model.pt` | PyTorch checkpoint (model weights, label mappings, optimizer state) |
+| `best_model.pt` | PyTorch checkpoint (model weights, label mappings, loss_type) |
 | `training_history.json` | Epoch-by-epoch metrics (loss, F1, precision, recall) |
-| `info.json` | Training metadata (languages, hyperparameters, results) |
+| `info.json` | Training metadata (languages, loss_type, hyperparameters, results) |
+| `tokenizer/` | Tokenizer files (if `--lang_tokens` used) |
 
-**info.json** is especially useful for:
-- 📋 Documenting model configurations
-- 🔄 Reproducing experiments
-- 📊 Comparing different training runs
-- 📝 Submission documentation
-
-## 🔍 Understanding Results
-
-### During Training
-```
-Epoch 1/3
-Train Loss: 0.2345, Dev Loss: 0.1876
-Dev F1: 72.45%, Precision: 75.12%, Recall: 69.98%
-✓ New best F1: 72.45%
-```
-
-### In training_history.json
-```json
-[
-  {
-    "epoch": 1,
-    "train_loss": 0.2345,
-    "dev_loss": 0.1876,
-    "dev_f1": 0.7245,
-    "dev_precision": 0.7512,
-    "dev_recall": 0.6998
-  }
-]
-```
-
-### In info.json
-```json
-{
-  "languages": ["FR"],
-  "best_f1": 0.7437,
-  "epochs": 3,
-  "use_pos": false
-}
-```
+**info.json** includes:
+- Languages trained on
+- Loss function type (`ce` or `focal`)
+- Whether language tokens were used
+- Best validation F1 score
+- All hyperparameters for reproducibility
 
 ---
 
 ## 🎯 Submission Format
-
-### Requirements Checklist
-
-✅ **File Format**: `test.system.cupt` in CUPT format  
-✅ **Structure**: `LANG/test.system.cupt` (one file per language)  
-✅ **Column 11**: MWE annotations (format: `MWE_ID:CATEGORY` or `MWE_ID`)  
-✅ **Validation**: Must pass `parseme_validate.py`  
-✅ **Zip Contents**: Only language folders with prediction files  
 
 ### CUPT Format Example
 
@@ -414,35 +411,22 @@ Dev F1: 72.45%, Precision: 75.12%, Recall: 69.98%
 ```bash
 # Reduce batch size
 python workflow.py train FR --batch_size 4
-
-# Use CPU instead
-# (Edit workflow.py to remove .cuda() calls)
 ```
 
-### Import Errors
+### Ensemble Model Not Found
 ```bash
-# Reinstall dependencies
-pip install --upgrade torch transformers numpy tqdm scikit-learn
+# Check if both models exist
+ls ensemble/ce/multilingual_XXX/best_model.pt
+ls ensemble/focal/multilingual_XXX/best_model.pt
 ```
 
 ### Validation Failures
 ```bash
+# Validate all predictions
+python validate_submission.py
+
 # Check individual language
 python 2.0/subtask1/tools/parseme_validate.py --lang FR predictions/FR/test.system.cupt
-
-# Common issues:
-# - Wrong filename (must be test.system.cupt)
-# - Wrong column for MWE annotations (must be column 11)
-# - Invalid MWE format (use MWE_ID:CATEGORY or MWE_ID)
-```
-
-### Model Loading Issues
-```bash
-# Check if model file exists
-ls models/multilingual_FR+PL+EL/best_model.pt
-
-# Check info.json for model configuration
-cat models/multilingual_FR+PL+EL/info.json
 ```
 
 ---
