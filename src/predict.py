@@ -109,6 +109,20 @@ def predict_cupt_file(
         print(f"         Falling back to 'bert-base-multilingual-cased'")
         model_name = 'bert-base-multilingual-cased'
     
+    # Initialize tokenizer first (needed to get correct vocab size)
+    if use_lang_tokens:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
+        else:
+            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
+    else:
+        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path)
+        else:
+            tokenizer = MWETokenizer(model_name)
+    
     # Initialize model
     model = MWEIdentificationModel(
         model_name, 
@@ -117,22 +131,13 @@ def predict_cupt_file(
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
         use_pos=use_pos
     )
-    model.load_state_dict(checkpoint['model_state_dict'])
     
-    # Resize token embeddings if language tokens were used during training
+    # Resize token embeddings BEFORE loading state dict if language tokens were used
     if use_lang_tokens:
-        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
-        if os.path.exists(tokenizer_path):
-            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
-        else:
-            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
         model.transformer.resize_token_embeddings(len(tokenizer.get_tokenizer()))
-    else:
-        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
-        if os.path.exists(tokenizer_path):
-            tokenizer = MWETokenizer(tokenizer_path)
-        else:
-            tokenizer = MWETokenizer(model_name)
+    
+    # Now load the state dict with correct embedding size
+    model.load_state_dict(checkpoint['model_state_dict'])
     
     model.to(device)
     model.eval()
