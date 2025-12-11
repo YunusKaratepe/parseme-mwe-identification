@@ -8,3 +8,5 @@ models
 *.zip
 test.cupt
 test.system.cupt
+ensemble/ce
+ensemble/focal
