@@ -218,7 +218,7 @@ def predict_cupt_file(
         print("Applying discontinuous MWE post-processing...")
         from postprocess_discontinuous import fix_discontinuous_mwes
         predictions_by_sentence = fix_discontinuous_mwes(predictions_by_sentence)
-        print("✓ Discontinuous MWE patterns fixed")
+        print("Discontinuous MWE patterns fixed")
     
     # Convert predictions to MWE column format
     print("Converting predictions to CUPT format...")
