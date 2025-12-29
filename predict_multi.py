@@ -33,8 +33,11 @@ def run_predictions():
         print(f"Running prediction for {lang}...")
         
         try:
-            # 3. Run the command (no capture_output so we see all loading details)
-            result = subprocess.run(command)
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True
+            )
             
             # Check if the command was successful
             if result.returncode == 0:
