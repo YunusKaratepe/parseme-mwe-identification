@@ -6,7 +6,7 @@ import os
 languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
 
 # The path to your trained model
-model_path = "models/251210_multilingual_FR+PL+EL+PT+SL+SR+SV+UK+NL+EGY+KA+JA+HE+LV+FA+RO/best_model.pt"
+model_path = "models/251211_multilingual_FR+PL+EL+PT+SL+SR+SV+UK+NL+EGY+KA+JA+HE+LV+FA+RO/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"
@@ -33,12 +33,8 @@ def run_predictions():
         print(f"Running prediction for {lang}...")
         
         try:
-            # 3. Run the command
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True
-            )
+            # 3. Run the command (no capture_output so we see all loading details)
+            result = subprocess.run(command)
             
             # Check if the command was successful
             if result.returncode == 0:

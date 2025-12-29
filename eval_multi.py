@@ -7,7 +7,7 @@ import os
 languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
 
 # The output text file where results will be appended
-output_filename = "evaluation_results.txt"
+output_filename = "results/evaluation_results.txt"
 
 # Path to the evaluation script
 eval_script = "2.0/subtask1/tools/parseme_evaluate.py"

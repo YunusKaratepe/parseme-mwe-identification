@@ -335,8 +335,16 @@ def predict_mwe_tags(
     word_categories = []
     previous_word_idx = None
     
+    # Determine if we need to skip the first word (language token)
+    skip_first_word = tokenizer.use_lang_tokens and language is not None
+    
     for idx, word_idx in enumerate(word_ids):
         if word_idx is not None and word_idx != previous_word_idx:
+            # Skip word_idx 0 if it's the language token
+            if skip_first_word and word_idx == 0:
+                previous_word_idx = word_idx
+                continue
+                
             bio_pred_id = bio_predictions[0, idx].item()
             cat_pred_id = category_predictions[0, idx].item()
             word_bio_tags.append(id_to_label[bio_pred_id])
