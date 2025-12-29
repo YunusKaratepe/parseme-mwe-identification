@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 
 # --- CONFIGURATION ---
 # List of languages to evaluate
@@ -14,6 +15,9 @@ eval_script = "2.0/subtask1/tools/parseme_evaluate.py"
 def run_evaluation():
     # Open the file in write mode (clears previous run) 
     # Change to "a" if you want to keep history across multiple runs of this script
+    env = os.environ.copy()
+    env["PYTHONUTF8"] = "1"
+
     with open(output_filename, "w", encoding="utf-8") as f:
         
         for lang in languages:
@@ -40,9 +44,11 @@ def run_evaluation():
                 # Execute the command
                 result = subprocess.run(
                     command,
-                    capture_output=True, # Captures both stdout and stderr
-                    text=True,           # Decodes bytes to string automatically
-                    check=False          # Set to True if you want the script to crash on error
+                    capture_output=True, 
+                    text=True,           
+                    check=False,
+                    env=env,             # <--- YOU MISSED THIS: Passes the UTF-8 fix to the script
+                    encoding='utf-8'     # <--- RECOMMENDED: Ensures THIS script reads the output as UTF-8
                 )
                 
                 # Write the standard output (the actual scores)
