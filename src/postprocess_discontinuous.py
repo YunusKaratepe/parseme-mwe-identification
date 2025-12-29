@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 import re
 
 
-def fix_discontinuous_mwes(predictions: List[Tuple[List[str], List[str]]]) -> List[Tuple[List[str], List[str]]]:
+def fix_discontinuous_mwes(predictions: List[Tuple[List[str], List[str]]], max_gap_length: int = 10) -> List[Tuple[List[str], List[str]]]:
     """
     Fix discontinuous MWEs using heuristic stitching
     
@@ -15,6 +15,7 @@ def fix_discontinuous_mwes(predictions: List[Tuple[List[str], List[str]]]) -> Li
     
     Args:
         predictions: List of (bio_tags, categories) tuples for each sentence
+        max_gap_length: Maximum number of O tokens to bridge (default: 10)
     
     Returns:
         Fixed predictions with discontinuous MWEs stitched
@@ -45,11 +46,14 @@ def fix_discontinuous_mwes(predictions: List[Tuple[List[str], List[str]]]) -> Li
                     if fixed_bio[j] == 'I-MWE' and fixed_cats[j] == b_category:
                         # Found continuation with same category
                         if found_gap:
-                            # We have a B-X ... O ... I-X pattern - fix it!
-                            for k in range(gap_start, gap_end + 1):
-                                fixed_bio[k] = 'I-MWE'
-                                fixed_cats[k] = b_category
-                            # Reset gap tracking after filling
+                            gap_length = gap_end - gap_start + 1
+                            # Only stitch if gap is within reasonable length
+                            if gap_length <= max_gap_length:
+                                # We have a B-X ... O ... I-X pattern - fix it!
+                                for k in range(gap_start, gap_end + 1):
+                                    fixed_bio[k] = 'I-MWE'
+                                    fixed_cats[k] = b_category
+                            # Reset gap tracking after filling (or skipping)
                             found_gap = False
                             gap_start = -1
                             gap_end = -1

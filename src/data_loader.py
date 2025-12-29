@@ -185,22 +185,23 @@ class CUPTDataLoader:
             token_assignment[idx] = (selected_mwe_id, selected_category)
         
         # Third pass: convert to BIO tags based on token assignments
-        # Group consecutive tokens by MWE ID to determine B- vs I- tags
-        current_mwe_id = None
+        # Track which MWEs we've seen to determine B- vs I- tags
+        # For discontinuous MWEs: first occurrence = B-MWE, later occurrences = I-MWE (even with gaps)
+        seen_mwes = set()
         
         for idx in range(num_tokens):
             if idx not in token_assignment:
                 mwe_tags[idx] = 'O'
                 mwe_categories[idx] = 'O'
-                current_mwe_id = None
                 continue
             
             mwe_id, category = token_assignment[idx]
             
-            # B-MWE if: new MWE starts or different MWE from previous token
-            if mwe_id != current_mwe_id:
+            # B-MWE only for the FIRST token of each MWE (by ID)
+            # All subsequent tokens (even after gaps) get I-MWE
+            if mwe_id not in seen_mwes:
                 mwe_tags[idx] = 'B-MWE'
-                current_mwe_id = mwe_id
+                seen_mwes.add(mwe_id)
             else:
                 mwe_tags[idx] = 'I-MWE'
             
