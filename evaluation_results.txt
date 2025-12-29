@@ -1,0 +1,106 @@
+
+==============================
+RESULTS FOR LANGUAGE: FR
+==============================
+## Global evaluation
+* MWE-based: P=314/624=0.5032 R=314/530=0.5925 F=0.5442
+* Tok-based: P=930/1188=0.7828 R=930/1291=0.7204 F=0.7503
+
+## Per-category evaluation (partition of Global)
+* AdjID: MWE-proportion: gold=16/530=3% pred=12/624=2%
+* AdjID: MWE-based: P=8/12=0.6667 R=8/16=0.5000 F=0.5714
+* AdjID: Tok-based: P=22/30=0.7333 R=22/38=0.5789 F=0.6471
+* AdpID: MWE-proportion: gold=61/530=12% pred=64/624=10%
+* AdpID: MWE-based: P=58/64=0.9062 R=58/61=0.9508 F=0.9280
+* AdpID: Tok-based: P=167/180=0.9278 R=167/175=0.9543 F=0.9408
+* AdvID: MWE-proportion: gold=116/530=22% pred=159/624=25%
+* AdvID: MWE-based: P=53/159=0.3333 R=53/116=0.4569 F=0.3855
+* AdvID: Tok-based: P=173/259=0.6680 R=173/260=0.6654 F=0.6667
+* ConjID: MWE-proportion: gold=15/530=3% pred=15/624=2%
+* ConjID: MWE-based: P=15/15=1.0000 R=15/15=1.0000 F=1.0000
+* ConjID: Tok-based: P=36/36=1.0000 R=36/36=1.0000 F=1.0000
+* DetID: MWE-proportion: gold=16/530=3% pred=14/624=2%
+* DetID: MWE-based: P=10/14=0.7143 R=10/16=0.6250 F=0.6667
+* DetID: Tok-based: P=24/28=0.8571 R=24/37=0.6486 F=0.7385
+* IRV: MWE-proportion: gold=23/530=4% pred=28/624=4%
+* IRV: MWE-based: P=9/28=0.3214 R=9/23=0.3913 F=0.3529
+* IRV: Tok-based: P=25/45=0.5556 R=25/45=0.5556 F=0.5556
+* LVC.cause: MWE-proportion: gold=2/530=0% pred=1/624=0%
+* LVC.cause: MWE-based: P=0/1=0.0000 R=0/2=0.0000 F=0.0000
+* LVC.cause: Tok-based: P=1/1=1.0000 R=1/6=0.1667 F=0.2857
+* LVC.full: MWE-proportion: gold=45/530=8% pred=86/624=14%
+* LVC.full: MWE-based: P=6/86=0.0698 R=6/45=0.1333 F=0.0916
+* LVC.full: Tok-based: P=51/104=0.4904 R=51/98=0.5204 F=0.5050
+* NID: MWE-proportion: gold=163/530=31% pred=155/624=25%
+* NID: MWE-based: P=113/155=0.7290 R=113/163=0.6933 F=0.7107
+* NID: Tok-based: P=282/357=0.7899 R=282/398=0.7085 F=0.7470
+* NV.LVC.full: MWE-proportion: gold=1/530=0% pred=0/624=0%
+* NV.LVC.full: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* NV.LVC.full: Tok-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* NV.VID: MWE-proportion: gold=11/530=2% pred=9/624=1%
+* NV.VID: MWE-based: P=8/9=0.8889 R=8/11=0.7273 F=0.8000
+* NV.VID: Tok-based: P=26/26=1.0000 R=26/34=0.7647 F=0.8667
+* PronID: MWE-proportion: gold=6/530=1% pred=6/624=1%
+* PronID: MWE-based: P=6/6=1.0000 R=6/6=1.0000 F=1.0000
+* PronID: Tok-based: P=9/9=1.0000 R=9/9=1.0000 F=1.0000
+* VID: MWE-proportion: gold=55/530=10% pred=75/624=12%
+* VID: MWE-based: P=15/75=0.2000 R=15/55=0.2727 F=0.2308
+* VID: Tok-based: P=73/113=0.6460 R=73/153=0.4771 F=0.5489
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=411/530=78% pred=624/624=100%
+* Continuous: MWE-based: P=314/624=0.5032 R=314/411=0.7640 F=0.6068
+* Discontinuous: MWE-proportion: gold=119/530=22% pred=0/624=0%
+* Discontinuous: MWE-based: P=0/0=0.0000 R=0/119=0.0000 F=0.0000
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=514/530=97% pred=380/624=61%
+* Multi-token: MWE-based: P=302/380=0.7947 R=302/514=0.5875 F=0.6756
+* Single-token: MWE-proportion: gold=16/530=3% pred=244/624=39%
+* Single-token: MWE-based: P=12/244=0.0492 R=12/16=0.7500 F=0.0923
+
+
+
+==============================
+RESULTS FOR LANGUAGE: DE
+==============================
+
+--- STDERR (Warnings/Errors) ---
+usage: parseme_evaluate.py [-h] [--debug] [--combinatorial]
+                           [--train train_file] --gold gold_file --pred
+                           prediction_file
+parseme_evaluate.py: error: argument --gold: can't open '2.0/subtask1/DE/dev.cupt': [Errno 2] No such file or directory: '2.0/subtask1/DE/dev.cupt'
+
+
+==============================
+RESULTS FOR LANGUAGE: PL
+==============================
+
+--- STDERR (Warnings/Errors) ---
+usage: parseme_evaluate.py [-h] [--debug] [--combinatorial]
+                           [--train train_file] --gold gold_file --pred
+                           prediction_file
+parseme_evaluate.py: error: argument --pred: can't open 'predictions/PL/dev.system.cupt': [Errno 2] No such file or directory: 'predictions/PL/dev.system.cupt'
+
+
+==============================
+RESULTS FOR LANGUAGE: TR
+==============================
+
+--- STDERR (Warnings/Errors) ---
+usage: parseme_evaluate.py [-h] [--debug] [--combinatorial]
+                           [--train train_file] --gold gold_file --pred
+                           prediction_file
+parseme_evaluate.py: error: argument --gold: can't open '2.0/subtask1/TR/dev.cupt': [Errno 2] No such file or directory: '2.0/subtask1/TR/dev.cupt'
+
+
+==============================
+RESULTS FOR LANGUAGE: EN
+==============================
+
+--- STDERR (Warnings/Errors) ---
+usage: parseme_evaluate.py [-h] [--debug] [--combinatorial]
+                           [--train train_file] --gold gold_file --pred
+                           prediction_file
+parseme_evaluate.py: error: argument --gold: can't open '2.0/subtask1/EN/dev.cupt': [Errno 2] No such file or directory: '2.0/subtask1/EN/dev.cupt'
+

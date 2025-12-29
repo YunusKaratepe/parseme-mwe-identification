@@ -10,3 +10,6 @@ test.cupt
 test.system.cupt
 ensemble/ce
 ensemble/focal
+predictions_dev/
+test_split.cupt
+predictions/
