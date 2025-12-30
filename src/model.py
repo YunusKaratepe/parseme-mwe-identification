@@ -1,6 +1,7 @@
 """
 Transformer-based MWE identification model for PARSEME 2.0
 Uses BERT/RoBERTa for token classification with BIO tagging
+Optional CRF layer for sequence-level constraints (improves discontinuous MWE detection)
 """
 import torch
 import torch.nn as nn
@@ -8,13 +9,21 @@ from transformers import AutoModel, AutoTokenizer, AutoConfig
 from typing import List, Dict, Tuple, Optional
 from losses import get_loss_function
 
+try:
+    from torchcrf import CRF
+    CRF_AVAILABLE = True
+except ImportError:
+    CRF_AVAILABLE = False
+    print("Warning: pytorch-crf not installed. CRF layer will not be available.")
+    print("Install with: pip install pytorch-crf")
+
 
 class MWEIdentificationModel(nn.Module):
     """Multi-task token classification model for MWE identification and categorization"""
     
     def __init__(self, model_name: str = 'bert-base-multilingual-cased', num_labels: int = 3, 
                  num_categories: int = 1, dropout: float = 0.1, num_pos_tags: int = 18, 
-                 use_pos: bool = True, loss_type: str = 'ce'):
+                 use_pos: bool = True, loss_type: str = 'ce', use_crf: bool = False):
         super().__init__()
         
         self.model_name = model_name
@@ -22,6 +31,10 @@ class MWEIdentificationModel(nn.Module):
         self.num_categories = num_categories
         self.use_pos = use_pos
         self.loss_type = loss_type
+        self.use_crf = use_crf and CRF_AVAILABLE
+        
+        if use_crf and not CRF_AVAILABLE:
+            print("Warning: CRF requested but pytorch-crf not installed. Falling back to standard classification.")
         
         # Load pretrained transformer
         self.config = AutoConfig.from_pretrained(model_name)
@@ -43,7 +56,12 @@ class MWEIdentificationModel(nn.Module):
         self.bio_classifier = nn.Linear(combined_hidden_size, num_labels)
         self.category_classifier = nn.Linear(combined_hidden_size, num_categories)
         
-        # Loss functions
+        # Optional CRF layer for BIO tagging (helps with discontinuous MWEs)
+        if self.use_crf:
+            self.crf = CRF(num_labels, batch_first=True)
+            print("✓ CRF layer enabled for BIO tagging (improves discontinuous MWE detection)")
+        
+        # Loss functions (only used when CRF is disabled)
         self.bio_loss_fn = get_loss_function(loss_type, ignore_index=-100)
         self.category_loss_fn = get_loss_function(loss_type, ignore_index=-100)
         
@@ -84,11 +102,25 @@ class MWEIdentificationModel(nn.Module):
         
         loss = None
         if labels is not None and category_labels is not None:
-            # BIO tagging loss (using configured loss function)
-            bio_loss = self.bio_loss_fn(bio_logits.view(-1, self.num_labels), labels.view(-1))
-            
-            # Category prediction loss (using configured loss function)
+            # Category prediction loss (always uses standard loss)
             category_loss = self.category_loss_fn(category_logits.view(-1, self.num_categories), category_labels.view(-1))
+            
+            # BIO tagging loss
+            if self.use_crf:
+                # CRF loss: considers sequence-level constraints
+                # Mask out padding tokens (where attention_mask == 0 and labels == -100)
+                mask = (labels != -100) & (attention_mask.bool())
+                
+                # CRF expects labels without -100, so we need to handle padding
+                # Replace -100 with 0 temporarily (will be masked anyway)
+                labels_for_crf = labels.clone()
+                labels_for_crf[labels == -100] = 0
+                
+                # CRF.forward returns negative log likelihood
+                bio_loss = -self.crf(bio_logits, labels_for_crf, mask=mask, reduction='mean')
+            else:
+                # Standard cross-entropy loss (token-level)
+                bio_loss = self.bio_loss_fn(bio_logits.view(-1, self.num_labels), labels.view(-1))
             
             # Combined loss (equal weighting)
             loss = bio_loss + category_loss
@@ -326,7 +358,16 @@ def predict_mwe_tags(
     
     with torch.no_grad():
         outputs = model(input_ids, attention_mask, pos_ids=pos_ids)
-        bio_predictions = torch.argmax(outputs['bio_logits'], dim=-1)
+        
+        # Get predictions
+        if model.use_crf:
+            # CRF decode: get best sequence considering constraints
+            mask = attention_mask.bool()
+            bio_predictions = torch.tensor(model.crf.decode(outputs['bio_logits'], mask=mask)[0]).to(device)
+        else:
+            # Standard argmax prediction
+            bio_predictions = torch.argmax(outputs['bio_logits'], dim=-1)
+        
         category_predictions = torch.argmax(outputs['category_logits'], dim=-1)
     
     # Get word-level predictions (skip special tokens and subwords)

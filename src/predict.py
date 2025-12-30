@@ -100,6 +100,8 @@ def predict_cupt_file(
     pos_to_id = checkpoint.get('pos_to_id', None)
     use_pos = checkpoint.get('use_pos', False)
     use_lang_tokens = checkpoint.get('use_lang_tokens', False)
+    use_crf = checkpoint.get('use_crf', False)
+    loss_type = checkpoint.get('loss_type', 'ce')
     id_to_label = {v: k for k, v in label_to_id.items()}
     id_to_category = {v: k for k, v in category_to_id.items()}
     
@@ -129,7 +131,9 @@ def predict_cupt_file(
         num_labels=len(label_to_id), 
         num_categories=len(category_to_id),
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
-        use_pos=use_pos
+        use_pos=use_pos,
+        loss_type=loss_type,
+        use_crf=use_crf
     )
     
     # Resize token embeddings BEFORE loading state dict if language tokens were used
@@ -144,6 +148,7 @@ def predict_cupt_file(
     
     print(f"POS feature injection: {'ENABLED' if use_pos else 'DISABLED'}")
     print(f"Language-conditioned inputs: {'ENABLED' if use_lang_tokens else 'DISABLED'}")
+    print(f"CRF layer: {'ENABLED' if use_crf else 'DISABLED'}")
     
     print(f"Model loaded. Best F1: {checkpoint.get('best_f1', 'N/A')}")
     print(f"Categories: {len(category_to_id)} types")

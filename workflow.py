@@ -27,7 +27,7 @@ def print_options():
     print()
 
 
-def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, use_lang_tokens=False, loss_type='ce', output_base='models', model_name='bert-base-multilingual-cased'):
+def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, use_lang_tokens=False, loss_type='ce', use_crf=False, output_base='models', model_name='bert-base-multilingual-cased'):
     """Train model on specified language(s)"""
     # Handle both single language string and list of languages
     if isinstance(languages, str):
@@ -82,6 +82,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
             cmd += " --pos"
         if use_lang_tokens:
             cmd += " --lang_tokens"
+        if use_crf:
+            cmd += " --crf"
         result = os.system(cmd)
         
         if result == 0:
@@ -120,6 +122,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
                 cmd += " --pos"
             if use_lang_tokens:
                 cmd += " --lang_tokens"
+            if use_crf:
+                cmd += " --crf"
             result = os.system(cmd)
             
             if result == 0:

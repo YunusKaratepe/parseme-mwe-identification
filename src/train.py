@@ -175,7 +175,8 @@ def train_mwe_model(
     sample_ratio: float = 1.0,
     use_pos: bool = False,
     use_lang_tokens: bool = False,
-    loss_type: str = 'ce'
+    loss_type: str = 'ce',
+    use_crf: bool = False
 ):
     """
     Train MWE identification model
@@ -194,6 +195,7 @@ def train_mwe_model(
         use_pos: Enable POS feature injection
         use_lang_tokens: Enable language-conditioned inputs (prepend [LANG] tokens)
         loss_type: Loss function type - 'ce' for CrossEntropy, 'focal' for Focal Loss
+        use_crf: Enable CRF layer for BIO tagging (improves discontinuous MWE detection)
     """
     # Set random seeds
     torch.manual_seed(seed)
@@ -293,6 +295,11 @@ def train_mwe_model(
     # Initialize tokenizer and model
     print(f"\nInitializing model: {model_name}")
     print(f"Loss function: {loss_type.upper()} ({'Focal Loss' if loss_type == 'focal' else 'Cross-Entropy'})")
+    if use_crf:
+        print(f"CRF Layer: ENABLED (improves discontinuous MWE detection)")
+    else:
+        print(f"CRF Layer: DISABLED (use --crf to enable)")
+    
     tokenizer = MWETokenizer(model_name, use_lang_tokens=use_lang_tokens)
     model = MWEIdentificationModel(
         model_name, 
@@ -300,7 +307,8 @@ def train_mwe_model(
         num_categories=len(category_to_id),
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
         use_pos=use_pos,
-        loss_type=loss_type
+        loss_type=loss_type,
+        use_crf=use_crf
     )
     
     # Resize token embeddings if language tokens were added
@@ -417,7 +425,8 @@ def train_mwe_model(
                     'model_name': model_name,
                     'use_pos': use_pos,
                     'use_lang_tokens': use_lang_tokens,
-                    'loss_type': loss_type
+                    'loss_type': loss_type,
+                    'use_crf': use_crf
                 }, model_path)
                 print(f"✓ Model saved successfully")
                 
@@ -459,6 +468,7 @@ def train_mwe_model(
         'use_pos': use_pos,
         'use_lang_tokens': use_lang_tokens,
         'loss_type': loss_type,
+        'use_crf': use_crf,
         'model_name': model_name,
         'best_f1': best_f1,
         'num_labels': len(label_to_id),
@@ -546,6 +556,8 @@ if __name__ == '__main__':
                        help='Enable language-conditioned inputs (prepend [LANG] tokens to prevent language interference)')
     parser.add_argument('--loss', type=str, default='ce', choices=['ce', 'focal'],
                        help='Loss function: ce (CrossEntropy) or focal (Focal Loss for class imbalance)')
+    parser.add_argument('--crf', action='store_true',
+                       help='Enable CRF layer for BIO tagging (improves discontinuous MWE detection)')
     
     args = parser.parse_args()
     
@@ -562,5 +574,6 @@ if __name__ == '__main__':
         sample_ratio=args.sample_ratio,
         use_pos=args.pos,
         use_lang_tokens=args.lang_tokens,
-        loss_type=args.loss
+        loss_type=args.loss,
+        use_crf=args.crf
     )
