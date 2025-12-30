@@ -108,13 +108,30 @@ class MWEIdentificationModel(nn.Module):
             # BIO tagging loss
             if self.use_crf:
                 # CRF loss: considers sequence-level constraints
-                # Mask out padding tokens (where attention_mask == 0 and labels == -100)
-                mask = (labels != -100) & (attention_mask.bool())
+                # CRF requires that the first timestep of each sequence in the batch is valid
                 
-                # CRF expects labels without -100, so we need to handle padding
-                # Replace -100 with 0 temporarily (will be masked anyway)
+                # Create base mask from attention_mask (handles padding)
+                mask = attention_mask.bool()
+                
+                # Also mask out positions where labels are -100 (special tokens, subwords)
+                # BUT: CRF requires first token to always be valid, so we need special handling
+                labels_mask = (labels != -100)
+                
+                # Combine masks: use attention_mask for structure, but respect label masking
+                # except for the first position (CRF requirement)
+                batch_size = mask.size(0)
+                for i in range(batch_size):
+                    # Find first valid position in this sequence
+                    first_valid = mask[i].nonzero(as_tuple=True)[0]
+                    if len(first_valid) > 0:
+                        first_idx = first_valid[0].item()
+                        # Ensure first valid token stays in mask
+                        # For other positions, respect both attention_mask and labels_mask
+                        mask[i] = mask[i] & (labels_mask[i] | (torch.arange(mask.size(1), device=mask.device) == first_idx))
+                
+                # Prepare labels for CRF (replace -100 with valid tag)
                 labels_for_crf = labels.clone()
-                labels_for_crf[labels == -100] = 0
+                labels_for_crf[labels == -100] = 0  # Use 'O' tag for masked positions
                 
                 # CRF.forward returns negative log likelihood
                 bio_loss = -self.crf(bio_logits, labels_for_crf, mask=mask, reduction='mean')
