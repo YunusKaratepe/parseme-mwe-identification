@@ -227,6 +227,9 @@ Examples:
   # Train on Polish for 5 epochs
   python workflow.py train PL --epochs 5
   
+  # Train with CRF layer for better discontinuous MWE detection
+  python workflow.py train FR --epochs 10 --crf
+  
   # Train on multiple languages at once
   python workflow.py train PL FR EL --epochs 3 --batch_size 16
   
@@ -235,6 +238,12 @@ Examples:
   
   # Train single MULTILINGUAL model on multiple languages
   python workflow.py train PL FR EL --epochs 3 --multilingual
+  
+  # Train multilingual model with CRF and language tokens
+  python workflow.py train FR PL EL PT RO --epochs 10 --multilingual --crf --lang_tokens
+  
+  # Full training with all features enabled
+  python workflow.py train FR PL --epochs 10 --crf --pos --lang_tokens --loss focal --multilingual
   
   # Train multilingual model on all languages with 20% sample
   python workflow.py train FR PL EL PT RO SL SR SV UK --epochs 1 --sample_ratio 0.2 --multilingual
@@ -277,6 +286,8 @@ Available languages:
                        help='Enable language-conditioned inputs (prepend [LANG] tokens to prevent language interference)')
     parser.add_argument('--loss', type=str, default='ce', choices=['ce', 'focal'],
                        help='Loss function: ce (Cross-Entropy) or focal (Focal Loss for class imbalance, default: ce)')
+    parser.add_argument('--crf', action='store_true',
+                       help='Enable CRF layer for BIO tagging (improves discontinuous MWE detection)')
     parser.add_argument('--output', type=str, default='models',
                        help='Base output directory for saving models (default: models)')
     parser.add_argument('--model_name', type=str, default='bert-base-multilingual-cased',
@@ -289,7 +300,7 @@ Available languages:
     print_banner()
     
     if args.command == 'train':
-        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.lang_tokens, args.loss, args.output, args.model_name)
+        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.lang_tokens, args.loss, args.crf, args.output, args.model_name)
     elif args.command == 'predict':
         # For predict, visualize, summary - use first language if multiple specified
         language = args.languages[0] if args.languages else 'FR'
