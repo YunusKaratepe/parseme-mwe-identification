@@ -6,7 +6,7 @@ import os
 languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
 
 # The path to your trained model
-model_path = "models/251211_multilingual_FR+PL+EL+PT+SL+SR+SV+UK+NL+EGY+KA+JA+HE+LV+FA+RO/best_model.pt"
+model_path = "models/focalLoss-langTokens/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"
