@@ -1,0 +1,48 @@
+============================================================
+          DETAILED MULTILINGUAL EVALUATION REPORT           
+============================================================
+
+1. GLOBAL RANKING (Sorted by MWE F1)
+-------------------------------------------------------
+LANGUAGE   | MWE F1     | TOK F1    
+-------------------------------------------------------
+FR         | 0.6221     | 0.7730
+-------------------------------------------------------
+MACRO AVG  | 0.6221     | 0.7730
+
+2. CATEGORY DIFFICULTY (Averages across all languages)
+--------------------------------------------------------------------------------
+CATEGORY        | MWE AVG  | TOK AVG  | BEST LANG (MWE)
+--------------------------------------------------------------------------------
+AdjID           | 0.0000   | 0.0000   | FR (0.00)
+ConjID          | 0.0000   | 0.0000   | FR (0.00)
+DetID           | 0.0000   | 0.0000   | FR (0.00)
+LVC.cause       | 0.0000   | 0.0000   | FR (0.00)
+NV.LVC.full     | 0.0000   | 0.0000   | FR (0.00)
+NV.VID          | 0.0000   | 0.0000   | FR (0.00)
+PronID          | 0.0000   | 0.0000   | FR (0.00)
+VID             | 0.1714   | 0.3491   | FR (0.17)
+LVC.full        | 0.2857   | 0.4639   | FR (0.29)
+IRV             | 0.3871   | 0.4516   | FR (0.39)
+AdvID           | 0.4254   | 0.5850   | FR (0.43)
+NID             | 0.6291   | 0.6675   | FR (0.63)
+AdpID           | 0.6929   | 0.7232   | FR (0.69)
+
+3. CONTINUITY & TOKEN COUNT STATISTICS
+--------------------------------------------------
+TYPE                 | MWE AVG    | TOK AVG   
+--------------------------------------------------
+Continuous           | 0.6846     | 0.0000
+Discontinuous        | 0.2941     | 0.0000
+Multi-token          | 0.6456     | 0.0000
+Single-token         | 0.3415     | 0.0000
+
+4. DETAILED BREAKDOWN PER LANGUAGE
+============================================================
+
+--- FR ANALYSIS ---
+Global MWE F1: 0.6221
+Global Tok F1: 0.7730
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    AdpID=0.6929, NID=0.6291, AdvID=0.4254
+  Bottom 3: NV.LVC.full=0.0, NV.VID=0.0, PronID=0.0

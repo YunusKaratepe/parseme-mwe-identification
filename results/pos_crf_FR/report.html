@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+.styled-table {
+	border-collapse: collapse;
+	margin: 14px 0;
+	margin-left: 60px;
+	font-size: 0.9em;
+	font-family: sans-serif;
+	min-width: 400px;
+	box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+}
+.styled-table thead tr {
+	background-color: #34495e;
+	border: 1px solid #ffffff;
+	color: #ffffff;
+	text-align: center;
+}
+.styled-table th,
+.styled-table td {
+	padding: 12px 15px;
+	text-align: center;
+	min-width: 45px;
+}
+.styled-table tbody tr {
+	border-bottom: 1px solid #dddddd;
+}
+.styled-table tbody tr:nth-of-type(even) {
+	background-color: #f3f3f3;
+}
+.styled-table tbody tr:last-of-type {
+	border-bottom: 2px solid #34495e;
+}
+</style>
+
+</head>
+<body>
+<h1 style="color: steelblue;">Cross-lingual macro-averages</h1>
+<p style="line-height: 65%;"> <br> </p>
+<h2>General ranking:</h2>
+<table class="styled-table"><thead><tr>
+<th rowspan="2">#Langs</th><th colspan="3">Global MWE-based</th><th colspan="3">Global Token-based</th></tr>
+<tr><th>P</th><th>R</th><th>F</th><th>P</th><th>R</th><th>F</th></tr></thead><tbody>
+<tr><td>1/1</td>
+<td>62.15</td><td>62.26</td><td>62.21</td>
+<td>77.06</td><td>77.54</td><td>77.30</td></tr>
+</tbody></table><br>
+<h2>Discontinuous vs Continuous VMWEs:</h2>
+<table class="styled-table"><thead><tr>
+<th colspan="4">Discontinuous MWE-based</th><th colspan="4">Continuous MWE-based</th></tr>
+<tr><th>#Langs</th><th>P</th><th>R</th><th>F</th><th>#Langs</th><th>P</th><th>R</th><th>F</th></tr></thead><tbody>
+<tr><td>1/1</td>
+<td>49.02</td><td>21.01</td><td>29.41</td>
+<td>1/1</td>
+<td>63.54</td><td>74.21</td><td>68.46</td></tr>
+</tbody></table><br>
+<h2>Single-token vs Multi-token VMWEs:</h2>
+<table class="styled-table"><thead><tr>
+<th colspan="4">Single-token MWE-based</th><th colspan="4">Multi-token MWE-based</th></tr>
+<tr><th>#Langs</th><th>P</th><th>R</th><th>F</th><th>#Langs</th><th>P</th><th>R</th><th>F</th></tr></thead><tbody>
+<tr><td>1/1</td>
+<td>21.21</td><td>87.50</td><td>34.15</td>
+<td>1/1</td>
+<td>67.96</td><td>61.48</td><td>64.56</td></tr>
+</tbody></table><br><hr>
+<h1 style="color: steelblue;">Language-specific system ranking</h1><br>
+<table class="styled-table"><thead><tr>
+<th rowspan="2">Language</th><th colspan="3">Diversity</th><th colspan="3">Unseen MWE-based</th>
+<th colspan="3">Global MWE-based</th><th colspan="3">Global Token-based</th></tr>
+<tr><th>Index Richness</th><th>Shannon-Weaver Entropy</th><th>Shannon Evenness Index</th>
+<th>P</th><th>R</th><th>F</th><th>P</th><th>R</th><th>F</th><th>P</th><th>R</th><th>F</th></tr></thead><tbody>
+<tr><td>FR</td>
+<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>
+<td>62.15</td><td>62.26</td><td>62.21</td>
+<td>77.06</td><td>77.54</td><td>77.30</td></tr>
+</tbody></table><br><hr>
+<h1 style="color: steelblue;">Results per VMWE category</h1><br>
+<h2>FR</h2>
+<table class="styled-table"><thead><tr>
+<th rowspan="2">VMWEs</th><th colspan="3">MWE-based</th><th colspan="3">Token-based</th></tr>
+<tr><th>P</th><th>R</th><th>F</th><th>P</th><th>R</th><th>F</th></tr></thead><tbody>
+<tr><td>AdjID</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>AdpID</td>
+<td>66.67</td><td>72.13</td><td>69.29</td>
+<td>71.51</td><td>73.14</td><td>72.32</td></tr>
+<tr><td>AdvID</td>
+<td>37.50</td><td>49.14</td><td>42.54</td>
+<td>48.60</td><td>73.46</td><td>58.50</td></tr>
+<tr><td>ConjID</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>Continuous</td>
+<td>63.54</td><td>74.21</td><td>68.46</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>DetID</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>Discontinuous</td>
+<td>49.02</td><td>21.01</td><td>29.41</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>IRV</td>
+<td>75.00</td><td>26.09</td><td>38.71</td>
+<td>82.35</td><td>31.11</td><td>45.16</td></tr>
+<tr><td>LVC.cause</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>LVC.full</td>
+<td>28.26</td><td>28.89</td><td>28.57</td>
+<td>46.88</td><td>45.92</td><td>46.39</td></tr>
+<tr><td>NID</td>
+<td>60.92</td><td>65.03</td><td>62.91</td>
+<td>64.34</td><td>69.35</td><td>66.75</td></tr>
+<tr><td>NV.LVC.full</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>NV.VID</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>PronID</td>
+<td>0.00</td><td>0.00</td><td>0.00</td>
+<td>0.00</td><td>0.00</td><td>0.00</td></tr>
+<tr><td>VID</td>
+<td>14.12</td><td>21.82</td><td>17.14</td>
+<td>31.89</td><td>38.56</td><td>34.91</td></tr>
+</tbody></table><br>
+</body></html>

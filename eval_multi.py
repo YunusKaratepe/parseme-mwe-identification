@@ -4,7 +4,8 @@ import os
 
 # --- CONFIGURATION ---
 # List of languages to evaluate
-languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
+# languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
+languages = ["FR"] 
 
 # The output text file where results will be appended
 output_filename = "results/evaluation_results.txt"

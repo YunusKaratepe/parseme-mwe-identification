@@ -3,10 +3,11 @@ import sys
 import os
 
 # --- CONFIGURATION ---
-languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
+# languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
+languages = ["FR"] 
 
 # The path to your trained model
-model_path = "models/pos-crf/best_model.pt"
+model_path = "models/multilingual_FR/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"
@@ -28,7 +29,6 @@ def run_predictions():
             "--model", model_path,
             "--input", input_path,
             "--output", output_path,
-            "--force_no_crf"  # Bypass CRF decoding to allow discontinuous patterns
         ]
         
         print(f"Running prediction for {lang}...")

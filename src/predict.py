@@ -38,11 +38,13 @@ def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None
     mwe_id_counter = 1
     current_mwe_id = None
     current_category = None
+    last_mwe_id = None  # Track last MWE ID for discontinuous patterns
     
     for idx, tag in enumerate(bio_tags):
         if tag == 'B-MWE':
             # Start new MWE - first token gets ID:CATEGORY
             current_mwe_id = mwe_id_counter
+            last_mwe_id = current_mwe_id  # Remember for potential discontinuous continuation
             
             if mwe_categories and idx < len(mwe_categories) and mwe_categories[idx] != 'O':
                 cat = mwe_categories[idx]
@@ -57,11 +59,20 @@ def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None
                 mwe_column[idx] = f"{current_mwe_id}:VID"
             mwe_id_counter += 1
             
-        elif tag == 'I-MWE' and current_mwe_id is not None:
-            # Continue current MWE - subsequent tokens just get ID (no category)
-            mwe_column[idx] = str(current_mwe_id)
-        else:
-            # Outside MWE or error
+        elif tag == 'I-MWE':
+            # Continue MWE - check both current and last MWE ID for discontinuous patterns
+            if current_mwe_id is not None:
+                # Continuous pattern: B-MWE ... I-MWE
+                mwe_column[idx] = str(current_mwe_id)
+            elif last_mwe_id is not None:
+                # Discontinuous pattern: B-MWE ... O ... I-MWE
+                # Resume the last MWE
+                mwe_column[idx] = str(last_mwe_id)
+                current_mwe_id = last_mwe_id  # Reactivate for subsequent I-MWE tokens
+            # else: orphan I-MWE with no preceding B-MWE, ignore
+            
+        else:  # tag == 'O'
+            # Outside MWE - but DON'T reset last_mwe_id (for discontinuous patterns)
             current_mwe_id = None
             current_category = None
     
