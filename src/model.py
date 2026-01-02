@@ -59,7 +59,7 @@ class MWEIdentificationModel(nn.Module):
         # Optional CRF layer for BIO tagging (helps with discontinuous MWEs)
         if self.use_crf:
             self.crf = CRF(num_labels, batch_first=True)
-            print("✓ CRF layer enabled for BIO tagging (improves discontinuous MWE detection)")
+            print("[CRF] CRF layer enabled for BIO tagging (improves discontinuous MWE detection)")
         
         # Loss functions (only used when CRF is disabled)
         self.bio_loss_fn = get_loss_function(loss_type, ignore_index=-100)
@@ -402,8 +402,12 @@ def predict_mwe_tags(
             if skip_first_word and word_idx == 0:
                 previous_word_idx = word_idx
                 continue
-                
-            bio_pred_id = bio_predictions[0, idx].item()
+            
+            # Handle different tensor shapes for CRF vs non-CRF
+            if model.use_crf:
+                bio_pred_id = bio_predictions[idx].item()
+            else:
+                bio_pred_id = bio_predictions[0, idx].item()
             cat_pred_id = category_predictions[0, idx].item()
             word_bio_tags.append(id_to_label[bio_pred_id])
             word_categories.append(id_to_category[cat_pred_id])
