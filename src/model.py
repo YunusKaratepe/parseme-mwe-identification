@@ -59,12 +59,50 @@ class MWEIdentificationModel(nn.Module):
         # Optional CRF layer for BIO tagging (helps with discontinuous MWEs)
         if self.use_crf:
             self.crf = CRF(num_labels, batch_first=True)
+            # Initialize CRF with relaxed constraints to allow discontinuous MWEs
+            # By default, CRF learns transitions from data, but we can initialize
+            # with relaxed constraints to better handle O -> I-MWE transitions
+            self._init_crf_for_discontinuous()
             print("[CRF] CRF layer enabled for BIO tagging (improves discontinuous MWE detection)")
         
         # Loss functions (only used when CRF is disabled)
         self.bio_loss_fn = get_loss_function(loss_type, ignore_index=-100)
         self.category_loss_fn = get_loss_function(loss_type, ignore_index=-100)
+    
+    def _init_crf_for_discontinuous(self):
+        """
+        Initialize CRF transition matrix to support discontinuous MWEs.
         
+        In standard BIO tagging, O -> I transitions are invalid (you can't
+        continue an entity that hasn't started). However, for discontinuous
+        MWEs, we need to allow O -> I-MWE transitions.
+        
+        Label indices (assuming standard mapping):
+        0: O
+        1: B-MWE  
+        2: I-MWE
+        
+        We initialize transitions with small positive values to allow:
+        - O -> I-MWE (for discontinuous patterns)
+        - I-MWE -> O -> I-MWE (for gaps)
+        
+        The CRF will still learn optimal transitions from data, but this
+        initialization prevents it from completely blocking discontinuous patterns.
+        """
+        with torch.no_grad():
+            # transitions[i, j] = score for transitioning from j to i
+            # Higher scores = more likely transitions
+            
+            # Allow O (0) -> I-MWE (2) transition for discontinuous MWEs
+            # Initialize with small positive value instead of default random
+            # This tells CRF: "this transition is possible, learn its weight from data"
+            self.crf.transitions.data[2, 0] = -1.0  # O -> I-MWE (slightly penalized but allowed)
+            
+            # Also ensure I-MWE can loop back to itself after O
+            self.crf.transitions.data[2, 2] = 1.0  # I-MWE -> I-MWE (encouraged)
+            
+            print("[CRF] Initialized with relaxed constraints for discontinuous MWEs")
+    
     def forward(self, input_ids, attention_mask, labels=None, category_labels=None, pos_ids=None):
         """
         Args:

@@ -6,7 +6,7 @@ import os
 languages = ["FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL", "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"] 
 
 # The path to your trained model
-model_path = "models/pos-focalLoss-langTokens-crf/best_model.pt"
+model_path = "models/pos-crf/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"
@@ -22,12 +22,13 @@ def run_predictions():
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
         
-        # 2. Construct the command
+        # 2. Construct the command - ADD --force_no_crf to bypass CRF constraints
         command = [
             sys.executable, predict_script,
             "--model", model_path,
             "--input", input_path,
-            "--output", output_path
+            "--output", output_path,
+            "--force_no_crf"  # Bypass CRF decoding to allow discontinuous patterns
         ]
         
         print(f"Running prediction for {lang}...")
