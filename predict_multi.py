@@ -7,7 +7,7 @@ import os
 languages = ["FR"] 
 
 # The path to your trained model
-model_path = "models/multilingual_FR/focalLoss-pos-crf/best_model.pt"
+model_path = "models/multilingual_FR/pos-crf-masking/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"
