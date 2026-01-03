@@ -1,1 +1,6 @@
 python workflow.py train FR --epochs 5 --batch_size 16 --sample_ratio 1.0 --multilingual --pos --crf
+
+Continue training:
++ python workflow.py train FR --epochs 5 --batch_size 16 --pos --crf --loss focal --resume models/multilingual_FR/focalLoss-pos-crf/best_model.pt
++ python workflow.py train FR --epochs 5 --batch_size 16 --pos --crf --resume models/multilingual_FR/pos-crf/best_model.pt
+python workflow.py train FR --epochs 5 --batch_size 16 --pos --resume models/multilingual_FR/pos/best_model.pt

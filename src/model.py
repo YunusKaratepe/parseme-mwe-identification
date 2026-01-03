@@ -140,10 +140,7 @@ class MWEIdentificationModel(nn.Module):
         
         loss = None
         if labels is not None and category_labels is not None:
-            # Category prediction loss (always uses standard loss)
-            category_loss = self.category_loss_fn(category_logits.view(-1, self.num_categories), category_labels.view(-1))
-            
-            # BIO tagging loss
+            # BIO tagging loss (compute first to get CRF predictions if needed)
             if self.use_crf:
                 # CRF loss: considers sequence-level constraints
                 # CRF requires that the first timestep of each sequence in the batch is valid
@@ -173,9 +170,40 @@ class MWEIdentificationModel(nn.Module):
                 
                 # CRF.forward returns negative log likelihood
                 bio_loss = -self.crf(bio_logits, labels_for_crf, mask=mask, reduction='mean')
+                
+                # INNOVATION: Mask category loss based on CRF predictions
+                # Only compute category loss for tokens that CRF predicts as B-MWE or I-MWE
+                with torch.no_grad():
+                    # Get CRF's best sequence predictions
+                    crf_predictions = self.crf.decode(bio_logits, mask=mask)
+                    
+                    # Create mask for category loss: True where CRF predicts MWE (not O)
+                    crf_mwe_mask = torch.zeros_like(category_labels, dtype=torch.bool)
+                    for batch_idx, seq_predictions in enumerate(crf_predictions):
+                        for token_idx, label_id in enumerate(seq_predictions):
+                            if token_idx < category_labels.size(1):  # Safety check
+                                # label_id 0 is 'O', 1 is 'B-MWE', 2 is 'I-MWE'
+                                if label_id != 0:  # Not 'O' - it's part of an MWE
+                                    crf_mwe_mask[batch_idx, token_idx] = True
+                    
+                    # Mask category labels: only keep labels where CRF predicts MWE
+                    category_labels_masked = category_labels.clone()
+                    category_labels_masked[~crf_mwe_mask] = -100  # Ignore non-MWE positions
+                
+                # Category loss only on tokens CRF identifies as MWE
+                category_loss = self.category_loss_fn(
+                    category_logits.view(-1, self.num_categories), 
+                    category_labels_masked.view(-1)
+                )
             else:
                 # Standard cross-entropy loss (token-level)
                 bio_loss = self.bio_loss_fn(bio_logits.view(-1, self.num_labels), labels.view(-1))
+                
+                # Category prediction loss (standard - no masking needed without CRF)
+                category_loss = self.category_loss_fn(
+                    category_logits.view(-1, self.num_categories), 
+                    category_labels.view(-1)
+                )
             
             # Combined loss (equal weighting)
             loss = bio_loss + category_loss

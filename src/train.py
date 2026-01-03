@@ -176,7 +176,8 @@ def train_mwe_model(
     use_pos: bool = False,
     use_lang_tokens: bool = False,
     loss_type: str = 'ce',
-    use_crf: bool = False
+    use_crf: bool = False,
+    resume_from: str = None
 ):
     """
     Train MWE identification model
@@ -196,6 +197,7 @@ def train_mwe_model(
         use_lang_tokens: Enable language-conditioned inputs (prepend [LANG] tokens)
         loss_type: Loss function type - 'ce' for CrossEntropy, 'focal' for Focal Loss
         use_crf: Enable CRF layer for BIO tagging (improves discontinuous MWE detection)
+        resume_from: Path to checkpoint to resume training from (optional)
     """
     # Set random seeds
     torch.manual_seed(seed)
@@ -207,6 +209,25 @@ def train_mwe_model(
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
+    
+    # Check if resuming from checkpoint
+    start_epoch = 0
+    resume_checkpoint = None
+    if resume_from and os.path.exists(resume_from):
+        print(f"\n🔄 Resuming training from checkpoint: {resume_from}")
+        resume_checkpoint = torch.load(resume_from, map_location=device)
+        print(f"   Previous best F1: {resume_checkpoint.get('best_f1', 0):.4f}")
+        print(f"   Checkpoint epoch: {resume_checkpoint.get('epoch', 0)}")
+        # Override settings from checkpoint
+        model_name = resume_checkpoint['model_name']
+        use_pos = resume_checkpoint.get('use_pos', False)
+        use_lang_tokens = resume_checkpoint.get('use_lang_tokens', False)
+        loss_type = resume_checkpoint.get('loss_type', 'ce')
+        use_crf = resume_checkpoint.get('use_crf', False)
+        print(f"   Loaded settings: pos={use_pos}, lang_tokens={use_lang_tokens}, loss={loss_type}, crf={use_crf}")
+    elif resume_from:
+        print(f"⚠️  Warning: Resume checkpoint not found: {resume_from}")
+        print(f"   Starting fresh training instead...")
     
     # Load data
     print("\nLoading training data...")
@@ -301,6 +322,14 @@ def train_mwe_model(
         print(f"CRF Layer: DISABLED (use --crf to enable)")
     
     tokenizer = MWETokenizer(model_name, use_lang_tokens=use_lang_tokens)
+    
+    # Use checkpoint's label mappings if resuming
+    if resume_checkpoint:
+        label_to_id = resume_checkpoint['label_to_id']
+        category_to_id = resume_checkpoint['category_to_id']
+        pos_to_id = resume_checkpoint.get('pos_to_id', pos_to_id)
+        print(f"   Using label mappings from checkpoint")
+    
     model = MWEIdentificationModel(
         model_name, 
         num_labels=len(label_to_id), 
@@ -310,6 +339,11 @@ def train_mwe_model(
         loss_type=loss_type,
         use_crf=use_crf
     )
+    
+    # Load model state if resuming
+    if resume_checkpoint:
+        model.load_state_dict(resume_checkpoint['model_state_dict'])
+        print(f"✓ Loaded model weights from checkpoint")
     
     # Resize token embeddings if language tokens were added
     if use_lang_tokens:
@@ -332,6 +366,12 @@ def train_mwe_model(
     
     # Setup optimizer and scheduler
     optimizer = AdamW(model.parameters(), lr=learning_rate)
+    
+    # Load optimizer state if resuming
+    if resume_checkpoint and 'optimizer_state_dict' in resume_checkpoint:
+        optimizer.load_state_dict(resume_checkpoint['optimizer_state_dict'])
+        print(f"✓ Loaded optimizer state from checkpoint")
+    
     total_steps = len(train_dataloader) * epochs
     scheduler = get_linear_schedule_with_warmup(
         optimizer,
@@ -345,10 +385,25 @@ def train_mwe_model(
     print(f"Batch size: {batch_size}")
     print(f"Learning rate: {learning_rate}\n")
     
-    best_f1 = -1  # Initialize to -1 so first epoch always saves
-    training_history = []
+    best_f1 = resume_checkpoint.get('best_f1', -1) if resume_checkpoint else -1
+    start_epoch = resume_checkpoint.get('epoch', -1) + 1 if resume_checkpoint else 0
     
-    for epoch in range(epochs):
+    # Load training history if resuming
+    training_history = []
+    if resume_checkpoint and os.path.exists(os.path.join(output_dir, 'training_history.json')):
+        try:
+            with open(os.path.join(output_dir, 'training_history.json'), 'r') as f:
+                training_history = json.load(f)
+            print(f"✓ Loaded training history ({len(training_history)} previous epochs)")
+        except:
+            pass
+    
+    if resume_checkpoint:
+        print(f"\n🔄 Continuing from epoch {start_epoch + 1} (best F1 so far: {best_f1:.4f})")
+        epochs = start_epoch + epochs  # Train for additional epochs
+        print(f"   Will train until epoch {epochs}\n")
+    
+    for epoch in range(start_epoch, epochs):
         print(f"Epoch {epoch + 1}/{epochs}")
         print("-" * 50)
         
@@ -558,6 +613,8 @@ if __name__ == '__main__':
                        help='Loss function: ce (CrossEntropy) or focal (Focal Loss for class imbalance)')
     parser.add_argument('--crf', action='store_true',
                        help='Enable CRF layer for BIO tagging (improves discontinuous MWE detection)')
+    parser.add_argument('--resume', type=str, default=None,
+                       help='Path to checkpoint to resume training from (e.g., models/FR/best_model.pt)')
     
     args = parser.parse_args()
     
@@ -575,5 +632,6 @@ if __name__ == '__main__':
         use_pos=args.pos,
         use_lang_tokens=args.lang_tokens,
         loss_type=args.loss,
-        use_crf=args.crf
+        use_crf=args.crf,
+        resume_from=args.resume
     )

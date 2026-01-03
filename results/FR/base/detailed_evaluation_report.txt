@@ -1,0 +1,48 @@
+============================================================
+          DETAILED MULTILINGUAL EVALUATION REPORT           
+============================================================
+
+1. GLOBAL RANKING (Sorted by MWE F1)
+-------------------------------------------------------
+LANGUAGE   | MWE F1     | TOK F1    
+-------------------------------------------------------
+FR         | 0.6437     | 0.7815
+-------------------------------------------------------
+MACRO AVG  | 0.6437     | 0.7815
+
+2. CATEGORY DIFFICULTY (Averages across all languages)
+--------------------------------------------------------------------------------
+CATEGORY        | MWE AVG  | TOK AVG  | BEST LANG (MWE)
+--------------------------------------------------------------------------------
+LVC.cause       | 0.0000   | 0.0000   | FR (0.00)
+NV.LVC.full     | 0.0000   | 0.0000   | FR (0.00)
+AdjID           | 0.3200   | 0.5000   | FR (0.32)
+DetID           | 0.3333   | 0.6377   | FR (0.33)
+VID             | 0.3387   | 0.5205   | FR (0.34)
+LVC.full        | 0.4124   | 0.6178   | FR (0.41)
+NV.VID          | 0.5333   | 0.5217   | FR (0.53)
+IRV             | 0.5833   | 0.6739   | FR (0.58)
+AdvID           | 0.6320   | 0.7719   | FR (0.63)
+NID             | 0.6328   | 0.7074   | FR (0.63)
+PronID          | 0.6667   | 0.7143   | FR (0.67)
+AdpID           | 0.8960   | 0.9444   | FR (0.90)
+ConjID          | 0.9333   | 0.9863   | FR (0.93)
+
+3. CONTINUITY & TOKEN COUNT STATISTICS
+--------------------------------------------------
+TYPE                 | MWE AVG    | TOK AVG   
+--------------------------------------------------
+Continuous           | 0.6916     | 0.0000
+Discontinuous        | 0.4537     | 0.0000
+Multi-token          | 0.6790     | 0.0000
+Single-token         | 0.3000     | 0.0000
+
+4. DETAILED BREAKDOWN PER LANGUAGE
+============================================================
+
+--- FR ANALYSIS ---
+Global MWE F1: 0.6437
+Global Tok F1: 0.7815
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    ConjID=0.9333, AdpID=0.896, PronID=0.6667
+  Bottom 3: AdjID=0.32, LVC.cause=0.0, NV.LVC.full=0.0

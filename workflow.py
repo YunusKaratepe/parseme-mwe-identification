@@ -27,7 +27,7 @@ def print_options():
     print()
 
 
-def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, use_lang_tokens=False, loss_type='ce', use_crf=False, output_base='models', model_name='bert-base-multilingual-cased'):
+def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingual=False, use_pos=False, use_lang_tokens=False, loss_type='ce', use_crf=False, output_base='models', model_name='bert-base-multilingual-cased', resume_from=None):
     """Train model on specified language(s)"""
     # Handle both single language string and list of languages
     if isinstance(languages, str):
@@ -84,6 +84,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
             cmd += " --lang_tokens"
         if use_crf:
             cmd += " --crf"
+        if resume_from:
+            cmd += f" --resume {resume_from}"
         result = os.system(cmd)
         
         if result == 0:
@@ -124,6 +126,8 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
                 cmd += " --lang_tokens"
             if use_crf:
                 cmd += " --crf"
+            if resume_from:
+                cmd += f" --resume {resume_from}"
             result = os.system(cmd)
             
             if result == 0:
@@ -288,6 +292,8 @@ Available languages:
                        help='Loss function: ce (Cross-Entropy) or focal (Focal Loss for class imbalance, default: ce)')
     parser.add_argument('--crf', action='store_true',
                        help='Enable CRF layer for BIO tagging (improves discontinuous MWE detection)')
+    parser.add_argument('--resume', type=str, default=None,
+                       help='Path to checkpoint to resume training from (e.g., models/FR/best_model.pt)')
     parser.add_argument('--output', type=str, default='models',
                        help='Base output directory for saving models (default: models)')
     parser.add_argument('--model_name', type=str, default='bert-base-multilingual-cased',
@@ -300,7 +306,7 @@ Available languages:
     print_banner()
     
     if args.command == 'train':
-        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.lang_tokens, args.loss, args.crf, args.output, args.model_name)
+        train_model(args.languages, args.epochs, args.batch_size, args.sample_ratio, args.multilingual, args.pos, args.lang_tokens, args.loss, args.crf, args.output, args.model_name, args.resume)
     elif args.command == 'predict':
         # For predict, visualize, summary - use first language if multiple specified
         language = args.languages[0] if args.languages else 'FR'
