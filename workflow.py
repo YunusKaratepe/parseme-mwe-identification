@@ -38,6 +38,7 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         print(f"\n🌍 Training MULTILINGUAL model on {len(languages)} languages...")
         print(f"   Languages: {', '.join(languages)}")
         print(f"   Epochs: {epochs}, Batch size: {batch_size}, Sample ratio: {sample_ratio*100:.1f}%\n")
+        print("   Split policy: validation = last 10% of train.cupt; test = full dev.cupt")
         
         # Collect all train and dev files
         train_files = []
@@ -104,6 +105,7 @@ def train_model(languages, epochs=5, batch_size=8, sample_ratio=1.0, multilingua
         for language in languages:
             print(f"\n🚀 Training model on {language}...")
             print(f"   Epochs: {epochs}, Batch size: {batch_size}, Sample ratio: {sample_ratio*100:.1f}%\n")
+            print("   Split policy: validation = last 10% of train.cupt; test = full dev.cupt")
             
             train_file = f"2.0/subtask1/{language}/train.cupt"
             dev_file = f"2.0/subtask1/{language}/dev.cupt"

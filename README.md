@@ -84,7 +84,7 @@ python validate_submission.py
 - **🤝 Ensemble Predictions**: Combine Cross-Entropy and Focal Loss models for better performance
 - **🔧 Discontinuous MWE Post-Processing**: Automatic heuristic stitching to fix B-X ... O ... I-X patterns (converts 0% → 5-10% F1 on discontinuous)
 - **🌐 Multilingual Training**: Train single model on multiple languages combined
-- **⚖️ Language-Balanced Splitting**: Each language split 50/50 for validation/test
+- **⚖️ Data Splitting**: Validation is the last 10% of `train.cupt`; `dev.cupt` is used fully as the test set
 - **📊 Data Sampling**: Use `--sample_ratio` for quick performance analysis
 - **🚀 CUDA Support**: Automatic GPU acceleration
 - **📦 Submission Pipeline**: Automated prediction generation and validation
@@ -252,7 +252,7 @@ Train on any of these 17 languages:
   - **Discontinuous Post-Processing**: Heuristic stitching for B-X ... O ... I-X patterns
   - **Ensemble**: Probability averaging from CE + Focal models
 - **Optimizer**: AdamW with linear warmup
-- **Training**: Language-balanced validation/test splits
+- **Training**: Validation from the last 10% of `train.cupt`; evaluation/test on full `dev.cupt`
 
 ## 🔧 Training Parameters
 

@@ -250,45 +250,39 @@ def train_mwe_model(
         sample_size = int(len(train_sentences) * sample_ratio)
         train_sentences = random.sample(train_sentences, sample_size)
         print(f"Sampled {sample_ratio*100:.1f}% of training data: {len(train_sentences)} sentences")
+
+    # Split training into train/validation: last 10% as validation (no shuffling)
+    total_train = len(train_sentences)
+    if total_train >= 2:
+        val_size = max(1, int(total_train * 0.10))
+    else:
+        val_size = 0
+
+    if val_size > 0:
+        val_sentences = train_sentences[-val_size:]
+        train_sentences = train_sentences[:-val_size]
+    else:
+        val_sentences = []
+
+    print(f"\nTraining/Validation split (from train.cupt):")
+    print(f"  Train sentences: {len(train_sentences)}")
+    print(f"  Validation sentences (last 10%): {len(val_sentences)}")
     
-    print("\nLoading development data...")
+    print("\nLoading development data (used as TEST set)...")
     # Handle multiple dev files (for multilingual training)
     dev_files = dev_file.split(',')
-    
-    import random
-    random.seed(seed)
-    
-    val_sentences = []
+
     test_sentences = []
-    
     for df in dev_files:
         df = df.strip()
         sentences = data_loader.read_cupt_file(df)
         print(f"  Loaded {len(sentences)} sentences from {df}")
-        
-        # Count MWEs in this language's dev set
-        mwe_count = sum(1 for s in sentences for tag in s['mwe_tags'] if tag != 'O')
-        
-        # Shuffle each language's dev set separately
-        random.shuffle(sentences)
-        
-        # Split each language 50/50 into validation and test
-        split_idx = len(sentences) // 2
-        lang_val = sentences[:split_idx]
-        lang_test = sentences[split_idx:]
-        
-        # Count MWEs in val and test splits
-        val_mwe_count = sum(1 for s in lang_val for tag in s['mwe_tags'] if tag != 'O')
-        test_mwe_count = sum(1 for s in lang_test for tag in s['mwe_tags'] if tag != 'O')
-        
-        val_sentences.extend(lang_val)
-        test_sentences.extend(lang_test)
-        print(f"    -> Split into {len(lang_val)} val (MWEs: {val_mwe_count}) and {len(lang_test)} test (MWEs: {test_mwe_count})")
-    
+        test_sentences.extend(sentences)
+
     print(f"\nTotal validation sentences: {len(val_sentences)}")
     val_total_mwe = sum(1 for s in val_sentences for tag in s['mwe_tags'] if tag != 'O')
     print(f"Total validation MWE tokens: {val_total_mwe}")
-    
+
     print(f"Total test sentences: {len(test_sentences)}")
     test_total_mwe = sum(1 for s in test_sentences for tag in s['mwe_tags'] if tag != 'O')
     print(f"Total test MWE tokens: {test_total_mwe}")
