@@ -7,13 +7,13 @@ from typing import List
 #     "FR", "PL", "EL", "PT", "SL", "SR", "SV", "UK", "NL",
 #     "EGY", "KA", "JA", "HE", "LV", "FA", "RO", "GRC"
 # ]
-languages = ["FR"]
+languages = ["FR", "SV", "EL", "FA", "JA"]
 
 # Paths to your trained models (checkpoints)
 # Add as many checkpoints as you want; the script will average probabilities.
 model_paths = [
-    "models/FR_crf_focal/multilingual_FR/best_model.pt",
-    "models/FR_crf/multilingual_FR/best_model.pt",
+    "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_base/multilingual_FR+SV+EL+FA+JA/best_model.pt",
+    "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_crf/multilingual_FR+SV+EL+FA+JA/best_model.pt",
 ]
 
 # Input/output convention (match predict_multi.py defaults)
