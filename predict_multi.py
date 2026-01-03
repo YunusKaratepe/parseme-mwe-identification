@@ -7,7 +7,7 @@ import os
 languages = ["FR"] 
 
 # The path to your trained model
-model_path = "models/multilingual_FR/5_epoch_trainings/base/best_model.pt"
+model_path = "models/FR_crf/multilingual_FR/best_model.pt"
 
 # Script location
 predict_script = "src/predict.py"

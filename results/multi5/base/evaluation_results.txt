@@ -1,0 +1,322 @@
+
+==============================
+RESULTS FOR LANGUAGE: FR
+==============================
+## Global evaluation
+* MWE-based: P=362/545=0.6642 R=362/530=0.6830 F=0.6735
+* Tok-based: P=1006/1275=0.7890 R=1006/1291=0.7792 F=0.7841
+
+## Per-category evaluation (partition of Global)
+* AdjID: MWE-proportion: gold=16/530=3% pred=9/545=2%
+* AdjID: MWE-based: P=4/9=0.4444 R=4/16=0.2500 F=0.3200
+* AdjID: Tok-based: P=16/26=0.6154 R=16/38=0.4211 F=0.5000
+* AdpID: MWE-proportion: gold=61/530=12% pred=63/545=12%
+* AdpID: MWE-based: P=53/63=0.8413 R=53/61=0.8689 F=0.8548
+* AdpID: Tok-based: P=166/189=0.8783 R=166/175=0.9486 F=0.9121
+* AdvID: MWE-proportion: gold=116/530=22% pred=119/545=22%
+* AdvID: MWE-based: P=77/119=0.6471 R=77/116=0.6638 F=0.6553
+* AdvID: Tok-based: P=203/268=0.7575 R=203/260=0.7808 F=0.7689
+* ConjID: MWE-proportion: gold=15/530=3% pred=16/545=3%
+* ConjID: MWE-based: P=14/16=0.8750 R=14/15=0.9333 F=0.9032
+* ConjID: Tok-based: P=36/40=0.9000 R=36/36=1.0000 F=0.9474
+* DetID: MWE-proportion: gold=16/530=3% pred=15/545=3%
+* DetID: MWE-based: P=7/15=0.4667 R=7/16=0.4375 F=0.4516
+* DetID: Tok-based: P=28/36=0.7778 R=28/37=0.7568 F=0.7671
+* IRV: MWE-proportion: gold=23/530=4% pred=25/545=5%
+* IRV: MWE-based: P=14/25=0.5600 R=14/23=0.6087 F=0.5833
+* IRV: Tok-based: P=30/48=0.6250 R=30/45=0.6667 F=0.6452
+* LVC.cause: MWE-proportion: gold=2/530=0% pred=0/545=0%
+* LVC.cause: MWE-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* LVC.cause: Tok-based: P=0/0=0.0000 R=0/6=0.0000 F=0.0000
+* LVC.full: MWE-proportion: gold=45/530=8% pred=50/545=9%
+* LVC.full: MWE-based: P=23/50=0.4600 R=23/45=0.5111 F=0.4842
+* LVC.full: Tok-based: P=60/98=0.6122 R=60/98=0.6122 F=0.6122
+* NID: MWE-proportion: gold=163/530=31% pred=174/545=32%
+* NID: MWE-based: P=109/174=0.6264 R=109/163=0.6687 F=0.6469
+* NID: Tok-based: P=277/406=0.6823 R=277/398=0.6960 F=0.6891
+* NV.LVC.full: MWE-proportion: gold=1/530=0% pred=0/545=0%
+* NV.LVC.full: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* NV.LVC.full: Tok-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* NV.VID: MWE-proportion: gold=11/530=2% pred=5/545=1%
+* NV.VID: MWE-based: P=5/5=1.0000 R=5/11=0.4545 F=0.6250
+* NV.VID: Tok-based: P=15/15=1.0000 R=15/34=0.4412 F=0.6122
+* PronID: MWE-proportion: gold=6/530=1% pred=4/545=1%
+* PronID: MWE-based: P=4/4=1.0000 R=4/6=0.6667 F=0.8000
+* PronID: Tok-based: P=7/7=1.0000 R=7/9=0.7778 F=0.8750
+* VID: MWE-proportion: gold=55/530=10% pred=65/545=12%
+* VID: MWE-based: P=25/65=0.3846 R=25/55=0.4545 F=0.4167
+* VID: Tok-based: P=91/142=0.6408 R=91/153=0.5948 F=0.6169
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=411/530=78% pred=442/545=81%
+* Continuous: MWE-based: P=305/442=0.6900 R=305/411=0.7421 F=0.7151
+* Discontinuous: MWE-proportion: gold=119/530=22% pred=103/545=19%
+* Discontinuous: MWE-based: P=57/103=0.5534 R=57/119=0.4790 F=0.5135
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=514/530=97% pred=490/545=90%
+* Multi-token: MWE-based: P=349/490=0.7122 R=349/514=0.6790 F=0.6952
+* Single-token: MWE-proportion: gold=16/530=3% pred=55/545=10%
+* Single-token: MWE-based: P=13/55=0.2364 R=13/16=0.8125 F=0.3662
+
+
+
+==============================
+RESULTS FOR LANGUAGE: SV
+==============================
+## Global evaluation
+* MWE-based: P=227/322=0.7050 R=227/306=0.7418 F=0.7229
+* Tok-based: P=455/588=0.7738 R=455/564=0.8067 F=0.7899
+
+## Per-category evaluation (partition of Global)
+* AV.IRV: MWE-proportion: gold=1/306=0% pred=0/322=0%
+* AV.IRV: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* AV.IRV: Tok-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* AV.IVPC.full: MWE-proportion: gold=3/306=1% pred=0/322=0%
+* AV.IVPC.full: MWE-based: P=0/0=0.0000 R=0/3=0.0000 F=0.0000
+* AV.IVPC.full: Tok-based: P=0/0=0.0000 R=0/3=0.0000 F=0.0000
+* AV.IVPC.semi: MWE-proportion: gold=3/306=1% pred=0/322=0%
+* AV.IVPC.semi: MWE-based: P=0/0=0.0000 R=0/3=0.0000 F=0.0000
+* AV.IVPC.semi: Tok-based: P=0/0=0.0000 R=0/3=0.0000 F=0.0000
+* AV.LVC.full: MWE-proportion: gold=1/306=0% pred=0/322=0%
+* AV.LVC.full: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* AV.LVC.full: Tok-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* AdjID: MWE-proportion: gold=3/306=1% pred=2/322=1%
+* AdjID: MWE-based: P=2/2=1.0000 R=2/3=0.6667 F=0.8000
+* AdjID: Tok-based: P=3/3=1.0000 R=3/4=0.7500 F=0.8571
+* AdpID: MWE-proportion: gold=12/306=4% pred=10/322=3%
+* AdpID: MWE-based: P=7/10=0.7000 R=7/12=0.5833 F=0.6364
+* AdpID: Tok-based: P=21/29=0.7241 R=21/32=0.6562 F=0.6885
+* AdvID: MWE-proportion: gold=74/306=24% pred=79/322=25%
+* AdvID: MWE-based: P=61/79=0.7722 R=61/74=0.8243 F=0.7974
+* AdvID: Tok-based: P=116/147=0.7891 R=116/138=0.8406 F=0.8140
+* ConjID: MWE-proportion: gold=10/306=3% pred=5/322=2%
+* ConjID: MWE-based: P=5/5=1.0000 R=5/10=0.5000 F=0.6667
+* ConjID: Tok-based: P=7/7=1.0000 R=7/14=0.5000 F=0.6667
+* DetID: MWE-proportion: gold=7/306=2% pred=7/322=2%
+* DetID: MWE-based: P=6/7=0.8571 R=6/7=0.8571 F=0.8571
+* DetID: Tok-based: P=13/14=0.9286 R=13/16=0.8125 F=0.8667
+* IRV: MWE-proportion: gold=19/306=6% pred=25/322=8%
+* IRV: MWE-based: P=17/25=0.6800 R=17/19=0.8947 F=0.7727
+* IRV: Tok-based: P=34/49=0.6939 R=34/38=0.8947 F=0.7816
+* IVPC.full: MWE-proportion: gold=35/306=11% pred=54/322=17%
+* IVPC.full: MWE-based: P=24/54=0.4444 R=24/35=0.6857 F=0.5393
+* IVPC.full: Tok-based: P=46/91=0.5055 R=46/63=0.7302 F=0.5974
+* IVPC.semi: MWE-proportion: gold=18/306=6% pred=15/322=5%
+* IVPC.semi: MWE-based: P=6/15=0.4000 R=6/18=0.3333 F=0.3636
+* IVPC.semi: Tok-based: P=12/30=0.4000 R=12/35=0.3429 F=0.3692
+* LVC.cause: MWE-proportion: gold=1/306=0% pred=0/322=0%
+* LVC.cause: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* LVC.cause: Tok-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* LVC.full: MWE-proportion: gold=40/306=13% pred=40/322=12%
+* LVC.full: MWE-based: P=24/40=0.6000 R=24/40=0.6000 F=0.6000
+* LVC.full: Tok-based: P=52/74=0.7027 R=52/80=0.6500 F=0.6753
+* NID: MWE-proportion: gold=22/306=7% pred=24/322=7%
+* NID: MWE-based: P=15/24=0.6250 R=15/22=0.6818 F=0.6522
+* NID: Tok-based: P=15/26=0.5769 R=15/22=0.6818 F=0.6250
+* NV.IVPC.full: MWE-proportion: gold=13/306=4% pred=1/322=0%
+* NV.IVPC.full: MWE-based: P=1/1=1.0000 R=1/13=0.0769 F=0.1429
+* NV.IVPC.full: Tok-based: P=1/1=1.0000 R=1/13=0.0769 F=0.1429
+* NV.IVPC.semi: MWE-proportion: gold=6/306=2% pred=5/322=2%
+* NV.IVPC.semi: MWE-based: P=0/5=0.0000 R=0/6=0.0000 F=0.0000
+* NV.IVPC.semi: Tok-based: P=0/5=0.0000 R=0/6=0.0000 F=0.0000
+* NV.VID: MWE-proportion: gold=2/306=1% pred=0/322=0%
+* NV.VID: MWE-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* NV.VID: Tok-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* PronID: MWE-proportion: gold=7/306=2% pred=8/322=2%
+* PronID: MWE-based: P=6/8=0.7500 R=6/7=0.8571 F=0.8000
+* PronID: Tok-based: P=10/14=0.7143 R=10/12=0.8333 F=0.7692
+* VID: MWE-proportion: gold=29/306=9% pred=47/322=15%
+* VID: MWE-based: P=18/47=0.3830 R=18/29=0.6207 F=0.4737
+* VID: Tok-based: P=53/98=0.5408 R=53/79=0.6709 F=0.5989
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=253/306=83% pred=269/322=84%
+* Continuous: MWE-based: P=192/269=0.7138 R=192/253=0.7589 F=0.7356
+* Discontinuous: MWE-proportion: gold=53/306=17% pred=53/322=16%
+* Discontinuous: MWE-based: P=35/53=0.6604 R=35/53=0.6604 F=0.6604
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=202/306=66% pred=214/322=66%
+* Multi-token: MWE-based: P=154/214=0.7196 R=154/202=0.7624 F=0.7404
+* Single-token: MWE-proportion: gold=104/306=34% pred=108/322=34%
+* Single-token: MWE-based: P=73/108=0.6759 R=73/104=0.7019 F=0.6887
+
+
+
+==============================
+RESULTS FOR LANGUAGE: EL
+==============================
+## Global evaluation
+* MWE-based: P=45/67=0.6716 R=45/75=0.6000 F=0.6338
+* Tok-based: P=108/144=0.7500 R=108/168=0.6429 F=0.6923
+
+## Per-category evaluation (partition of Global)
+* AdpID: MWE-proportion: gold=3/75=4% pred=3/67=4%
+* AdpID: MWE-based: P=2/3=0.6667 R=2/3=0.6667 F=0.6667
+* AdpID: Tok-based: P=4/6=0.6667 R=4/6=0.6667 F=0.6667
+* AdvID: MWE-proportion: gold=12/75=16% pred=13/67=19%
+* AdvID: MWE-based: P=8/13=0.6154 R=8/12=0.6667 F=0.6400
+* AdvID: Tok-based: P=22/29=0.7586 R=22/27=0.8148 F=0.7857
+* ConjID: MWE-proportion: gold=10/75=13% pred=10/67=15%
+* ConjID: MWE-based: P=8/10=0.8000 R=8/10=0.8000 F=0.8000
+* ConjID: Tok-based: P=18/21=0.8571 R=18/22=0.8182 F=0.8372
+* IVPC.full: MWE-proportion: gold=1/75=1% pred=0/67=0%
+* IVPC.full: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* IVPC.full: Tok-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* LVC.cause: MWE-proportion: gold=2/75=3% pred=0/67=0%
+* LVC.cause: MWE-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* LVC.cause: Tok-based: P=0/0=0.0000 R=0/6=0.0000 F=0.0000
+* LVC.full: MWE-proportion: gold=25/75=33% pred=25/67=37%
+* LVC.full: MWE-based: P=13/25=0.5200 R=13/25=0.5200 F=0.5200
+* LVC.full: Tok-based: P=27/48=0.5625 R=27/52=0.5192 F=0.5400
+* NID: MWE-proportion: gold=8/75=11% pred=5/67=7%
+* NID: MWE-based: P=5/5=1.0000 R=5/8=0.6250 F=0.7692
+* NID: Tok-based: P=10/10=1.0000 R=10/16=0.6250 F=0.7692
+* VID: MWE-proportion: gold=14/75=19% pred=11/67=16%
+* VID: MWE-based: P=2/11=0.1818 R=2/14=0.1429 F=0.1600
+* VID: Tok-based: P=11/30=0.3667 R=11/37=0.2973 F=0.3284
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=59/75=79% pred=50/67=75%
+* Continuous: MWE-based: P=37/50=0.7400 R=37/59=0.6271 F=0.6789
+* Discontinuous: MWE-proportion: gold=16/75=21% pred=17/67=25%
+* Discontinuous: MWE-based: P=8/17=0.4706 R=8/16=0.5000 F=0.4848
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=75/75=100% pred=64/67=96%
+* Multi-token: MWE-based: P=45/64=0.7031 R=45/75=0.6000 F=0.6475
+* Single-token: MWE-proportion: gold=0/75=0% pred=3/67=4%
+* Single-token: MWE-based: P=0/3=0.0000 R=0/0=0.0000 F=0.0000
+
+
+
+==============================
+RESULTS FOR LANGUAGE: FA
+==============================
+## Global evaluation
+* MWE-based: P=415/525=0.7905 R=415/503=0.8250 F=0.8074
+* Tok-based: P=824/959=0.8592 R=824/959=0.8592 F=0.8592
+
+## Per-category evaluation (partition of Global)
+* AV.LVC.full: MWE-proportion: gold=5/503=1% pred=1/525=0%
+* AV.LVC.full: MWE-based: P=1/1=1.0000 R=1/5=0.2000 F=0.3333
+* AV.LVC.full: Tok-based: P=1/1=1.0000 R=1/5=0.2000 F=0.3333
+* AV.VID: MWE-proportion: gold=2/503=0% pred=0/525=0%
+* AV.VID: MWE-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* AV.VID: Tok-based: P=0/0=0.0000 R=0/4=0.0000 F=0.0000
+* AdjID: MWE-proportion: gold=24/503=5% pred=14/525=3%
+* AdjID: MWE-based: P=9/14=0.6429 R=9/24=0.3750 F=0.4737
+* AdjID: Tok-based: P=12/20=0.6000 R=12/35=0.3429 F=0.4364
+* AdpID: MWE-proportion: gold=86/503=17% pred=93/525=18%
+* AdpID: MWE-based: P=73/93=0.7849 R=73/86=0.8488 F=0.8156
+* AdpID: Tok-based: P=155/186=0.8333 R=155/171=0.9064 F=0.8683
+* AdvID: MWE-proportion: gold=35/503=7% pred=34/525=6%
+* AdvID: MWE-based: P=25/34=0.7353 R=25/35=0.7143 F=0.7246
+* AdvID: Tok-based: P=47/63=0.7460 R=47/67=0.7015 F=0.7231
+* ConjID: MWE-proportion: gold=20/503=4% pred=20/525=4%
+* ConjID: MWE-based: P=17/20=0.8500 R=17/20=0.8500 F=0.8500
+* ConjID: Tok-based: P=45/49=0.9184 R=45/49=0.9184 F=0.9184
+* DetID: MWE-proportion: gold=7/503=1% pred=7/525=1%
+* DetID: MWE-based: P=7/7=1.0000 R=7/7=1.0000 F=1.0000
+* DetID: Tok-based: P=14/14=1.0000 R=14/14=1.0000 F=1.0000
+* IVPC.full: MWE-proportion: gold=9/503=2% pred=5/525=1%
+* IVPC.full: MWE-based: P=4/5=0.8000 R=4/9=0.4444 F=0.5714
+* IVPC.full: Tok-based: P=4/5=0.8000 R=4/10=0.4000 F=0.5333
+* IVPC.semi: MWE-proportion: gold=1/503=0% pred=0/525=0%
+* IVPC.semi: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* IVPC.semi: Tok-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* IntjID: MWE-proportion: gold=2/503=0% pred=0/525=0%
+* IntjID: MWE-based: P=0/0=0.0000 R=0/2=0.0000 F=0.0000
+* IntjID: Tok-based: P=0/0=0.0000 R=0/4=0.0000 F=0.0000
+* LVC.full: MWE-proportion: gold=181/503=36% pred=202/525=38%
+* LVC.full: MWE-based: P=155/202=0.7673 R=155/181=0.8564 F=0.8094
+* LVC.full: Tok-based: P=341/397=0.8589 R=341/377=0.9045 F=0.8811
+* NID: MWE-proportion: gold=72/503=14% pred=84/525=16%
+* NID: MWE-based: P=48/84=0.5714 R=48/72=0.6667 F=0.6154
+* NID: Tok-based: P=70/110=0.6364 R=70/103=0.6796 F=0.6573
+* NV.IVPC.full: MWE-proportion: gold=5/503=1% pred=0/525=0%
+* NV.IVPC.full: MWE-based: P=0/0=0.0000 R=0/5=0.0000 F=0.0000
+* NV.IVPC.full: Tok-based: P=0/0=0.0000 R=0/5=0.0000 F=0.0000
+* NV.LVC.full: MWE-proportion: gold=16/503=3% pred=18/525=3%
+* NV.LVC.full: MWE-based: P=4/18=0.2222 R=4/16=0.2500 F=0.2353
+* NV.LVC.full: Tok-based: P=6/22=0.2727 R=6/22=0.2727 F=0.2727
+* NV.VID: MWE-proportion: gold=1/503=0% pred=0/525=0%
+* NV.VID: MWE-based: P=0/0=0.0000 R=0/1=0.0000 F=0.0000
+* NV.VID: Tok-based: P=0/0=0.0000 R=0/6=0.0000 F=0.0000
+* PronID: MWE-proportion: gold=6/503=1% pred=7/525=1%
+* PronID: MWE-based: P=5/7=0.7143 R=5/6=0.8333 F=0.7692
+* PronID: Tok-based: P=10/14=0.7143 R=10/11=0.9091 F=0.8000
+* VID: MWE-proportion: gold=31/503=6% pred=40/525=8%
+* VID: MWE-based: P=13/40=0.3250 R=13/31=0.4194 F=0.3662
+* VID: Tok-based: P=32/78=0.4103 R=32/75=0.4267 F=0.4183
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=465/503=92% pred=486/525=93%
+* Continuous: MWE-based: P=394/486=0.8107 R=394/465=0.8473 F=0.8286
+* Discontinuous: MWE-proportion: gold=38/503=8% pred=39/525=7%
+* Discontinuous: MWE-based: P=21/39=0.5385 R=21/38=0.5526 F=0.5455
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=387/503=77% pred=377/525=72%
+* Multi-token: MWE-based: P=316/377=0.8382 R=316/387=0.8165 F=0.8272
+* Single-token: MWE-proportion: gold=116/503=23% pred=148/525=28%
+* Single-token: MWE-based: P=99/148=0.6689 R=99/116=0.8534 F=0.7500
+
+
+
+==============================
+RESULTS FOR LANGUAGE: JA
+==============================
+## Global evaluation
+* MWE-based: P=193/307=0.6287 R=193/283=0.6820 F=0.6542
+* Tok-based: P=278/416=0.6683 R=278/404=0.6881 F=0.6780
+
+## Per-category evaluation (partition of Global)
+* AdjID: MWE-proportion: gold=3/283=1% pred=2/307=1%
+* AdjID: MWE-based: P=0/2=0.0000 R=0/3=0.0000 F=0.0000
+* AdjID: Tok-based: P=0/2=0.0000 R=0/5=0.0000 F=0.0000
+* AdpID: MWE-proportion: gold=44/283=16% pred=60/307=20%
+* AdpID: MWE-based: P=36/60=0.6000 R=36/44=0.8182 F=0.6923
+* AdpID: Tok-based: P=49/82=0.5976 R=49/62=0.7903 F=0.6806
+* AdvID: MWE-proportion: gold=18/283=6% pred=25/307=8%
+* AdvID: MWE-based: P=7/25=0.2800 R=7/18=0.3889 F=0.3256
+* AdvID: Tok-based: P=13/39=0.3333 R=13/34=0.3824 F=0.3562
+* ConjID: MWE-proportion: gold=9/283=3% pred=3/307=1%
+* ConjID: MWE-based: P=1/3=0.3333 R=1/9=0.1111 F=0.1667
+* ConjID: Tok-based: P=1/4=0.2500 R=1/11=0.0909 F=0.1333
+* DetID: MWE-proportion: gold=0/283=0% pred=3/307=1%
+* DetID: MWE-based: P=0/3=0.0000 R=0/0=0.0000 F=0.0000
+* DetID: Tok-based: P=0/5=0.0000 R=0/0=0.0000 F=0.0000
+* LVC.full: MWE-proportion: gold=111/283=39% pred=140/307=46%
+* LVC.full: MWE-based: P=99/140=0.7071 R=99/111=0.8919 F=0.7888
+* LVC.full: Tok-based: P=132/179=0.7374 R=132/148=0.8919 F=0.8073
+* MVC: MWE-proportion: gold=18/283=6% pred=0/307=0%
+* MVC: MWE-based: P=0/0=0.0000 R=0/18=0.0000 F=0.0000
+* MVC: Tok-based: P=0/0=0.0000 R=0/18=0.0000 F=0.0000
+* NID: MWE-proportion: gold=52/283=18% pred=37/307=12%
+* NID: MWE-based: P=10/37=0.2703 R=10/52=0.1923 F=0.2247
+* NID: Tok-based: P=11/46=0.2391 R=11/65=0.1692 F=0.1982
+* NV.MVC: MWE-proportion: gold=4/283=1% pred=0/307=0%
+* NV.MVC: MWE-based: P=0/0=0.0000 R=0/4=0.0000 F=0.0000
+* NV.MVC: Tok-based: P=0/0=0.0000 R=0/4=0.0000 F=0.0000
+* PronID: MWE-proportion: gold=5/283=2% pred=1/307=0%
+* PronID: MWE-based: P=0/1=0.0000 R=0/5=0.0000 F=0.0000
+* PronID: Tok-based: P=2/2=1.0000 R=2/9=0.2222 F=0.3636
+* VID: MWE-proportion: gold=19/283=7% pred=36/307=12%
+* VID: MWE-based: P=6/36=0.1667 R=6/19=0.3158 F=0.2182
+* VID: Tok-based: P=20/57=0.3509 R=20/48=0.4167 F=0.3810
+
+## MWE continuity (partition of Global)
+* Continuous: MWE-proportion: gold=280/283=99% pred=297/307=97%
+* Continuous: MWE-based: P=192/297=0.6465 R=192/280=0.6857 F=0.6655
+* Discontinuous: MWE-proportion: gold=3/283=1% pred=10/307=3%
+* Discontinuous: MWE-based: P=1/10=0.1000 R=1/3=0.3333 F=0.1538
+
+## Number of tokens (partition of Global)
+* Multi-token: MWE-proportion: gold=71/283=25% pred=71/307=23%
+* Multi-token: MWE-based: P=29/71=0.4085 R=29/71=0.4085 F=0.4085
+* Single-token: MWE-proportion: gold=212/283=75% pred=236/307=77%
+* Single-token: MWE-based: P=164/236=0.6949 R=164/212=0.7736 F=0.7321
+
+

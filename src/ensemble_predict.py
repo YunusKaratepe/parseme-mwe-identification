@@ -31,7 +31,21 @@ def load_ensemble_model(model_path: str, device: torch.device) -> Tuple:
     pos_to_id = checkpoint.get('pos_to_id', None)
     use_pos = checkpoint.get('use_pos', False)
     use_lang_tokens = checkpoint.get('use_lang_tokens', False)
+    use_crf = checkpoint.get('use_crf', False)
     loss_type = checkpoint.get('loss_type', 'ce')
+
+    # If the checkpoint was trained with CRF, we must instantiate a CRF-enabled model.
+    # If CRF dependencies are missing, loading would silently drop CRF parameters and
+    # produce inconsistent decoding, so we fail fast.
+    try:
+        from model import CRF_AVAILABLE
+    except Exception:
+        CRF_AVAILABLE = False
+    if use_crf and not CRF_AVAILABLE:
+        raise RuntimeError(
+            "This checkpoint was trained with CRF (use_crf=True), but pytorch-crf is not available "
+            "in the current environment. Install it with: pip install pytorch-crf"
+        )
     
     # Handle invalid model paths
     if not os.path.exists(model_name) and '/' in model_name and not model_name.startswith('bert-'):
@@ -45,7 +59,8 @@ def load_ensemble_model(model_path: str, device: torch.device) -> Tuple:
         num_categories=len(category_to_id),
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
         use_pos=use_pos,
-        loss_type=loss_type
+        loss_type=loss_type,
+        use_crf=use_crf
     )
     model.load_state_dict(checkpoint['model_state_dict'])
     
@@ -110,9 +125,25 @@ def predict_with_probabilities(
     
     with torch.no_grad():
         outputs = model(input_ids, attention_mask, pos_ids=pos_ids)
-        
-        # Get probability distributions (softmax)
-        bio_probs = torch.softmax(outputs['bio_logits'], dim=-1)  # [1, seq_len, num_labels]
+
+        # BIO probabilities:
+        # - If CRF is enabled, mimic src/predict.py behavior by decoding with CRF.
+        #   CRF does not provide straightforward per-token marginals here, so we convert
+        #   the decoded sequence into one-hot "probabilities" (ensembling becomes voting).
+        # - Otherwise, use softmax over emissions.
+        if getattr(model, 'use_crf', False) and hasattr(model, 'crf'):
+            mask = attention_mask.bool()
+            decoded = model.crf.decode(outputs['bio_logits'], mask=mask)
+            # decoded is a list (batch) of label-id lists with length == seq_len (for batch_first=True)
+            decoded_ids = decoded[0]
+            bio_probs = torch.zeros_like(outputs['bio_logits'])
+            for t, lab in enumerate(decoded_ids):
+                if t < bio_probs.size(1):
+                    bio_probs[0, t, lab] = 1.0
+        else:
+            bio_probs = torch.softmax(outputs['bio_logits'], dim=-1)  # [1, seq_len, num_labels]
+
+        # Category probabilities (always softmax)
         category_probs = torch.softmax(outputs['category_logits'], dim=-1)  # [1, seq_len, num_categories]
     
     # Extract word-level probabilities (skip special tokens and subwords)
@@ -192,7 +223,11 @@ def ensemble_predict(
 
 
 def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None) -> List[str]:
-    """Convert BIO tags to CUPT MWE column format"""
+    """Convert BIO tags back to CUPT MWE column format.
+
+    Keep this aligned with src/predict.py so ensemble and single-model
+    predictions follow the same conversion rules.
+    """
     VALID_CATEGORIES = {
         'IAV', 'IRV', 'LVC.cause', 'LVC.full', 'MVC', 'VID',
         'IVPC.full', 'IVPC.semi', 'AdjID', 'AdpID', 'AdvID', 
@@ -207,10 +242,12 @@ def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None
     mwe_id_counter = 1
     current_mwe_id = None
     current_category = None
+    last_mwe_id = None  # Track last MWE ID for discontinuous patterns
     
     for idx, tag in enumerate(bio_tags):
         if tag == 'B-MWE':
             current_mwe_id = mwe_id_counter
+            last_mwe_id = current_mwe_id  # Remember for potential discontinuous continuation
             
             if mwe_categories and idx < len(mwe_categories) and mwe_categories[idx] != 'O':
                 cat = mwe_categories[idx]
@@ -225,8 +262,14 @@ def bio_tags_to_mwe_column(bio_tags: List[str], mwe_categories: List[str] = None
             
         elif tag == 'I-MWE':
             if current_mwe_id is not None:
+                # Continuous: B-MWE ... I-MWE
                 mwe_column[idx] = str(current_mwe_id)
+            elif last_mwe_id is not None:
+                # Discontinuous: B-MWE ... O ... I-MWE
+                mwe_column[idx] = str(last_mwe_id)
+                current_mwe_id = last_mwe_id
         else:
+            # Outside MWE: reset current but keep last_mwe_id for discontinuous continuation
             current_mwe_id = None
             current_category = None
     
@@ -238,7 +281,7 @@ def ensemble_predict_file(
     focal_model_path: str,
     input_file: str,
     output_file: str,
-    fix_discontinuous: bool = True
+    fix_discontinuous: bool = False
 ):
     """
     Generate ensemble predictions for a CUPT file
@@ -348,7 +391,7 @@ def ensemble_predict_file(
     
     print(f"Predicted MWEs for {len(predictions_by_sentence)} sentences")
     
-    # Apply discontinuous MWE fixing
+    # Apply discontinuous MWE fixing (optional)
     if fix_discontinuous:
         print("Applying discontinuous MWE post-processing...")
         from postprocess_discontinuous import fix_discontinuous_mwes
@@ -366,13 +409,13 @@ def ensemble_predict_file(
             mwe_column = bio_tags_to_mwe_column(pred_tags, pred_cats)
             mwe_columns_by_sentence.append(mwe_column)
     
-    # Write output file
+    # Write output file (mirror src/predict.py behavior)
     print(f"Writing predictions to: {output_file}")
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     with open(input_file, 'r', encoding='utf-8') as f_in, open(output_file, 'w', encoding='utf-8') as f_out:
-        sentence_idx = 0
-        token_idx_in_sentence = 0
+        sentence_idx = -1
+        token_idx = -1
         
         for line in f_in:
             line = line.rstrip('\n')
@@ -384,7 +427,7 @@ def ensemble_predict_file(
             if not line.strip():
                 f_out.write('\n')
                 sentence_idx += 1
-                token_idx_in_sentence = 0
+                token_idx = -1
                 continue
             
             parts = line.split('\t')
@@ -393,15 +436,20 @@ def ensemble_predict_file(
                 continue
             
             token_id = parts[0]
+            
+            # Multi-word tokens: always output '*'
             if '-' in token_id or '.' in token_id:
-                f_out.write(line + '\n')
+                parts[10] = '*'
+                f_out.write('\t'.join(parts) + '\n')
                 continue
             
-            if sentence_idx < len(mwe_columns_by_sentence):
-                mwe_column = mwe_columns_by_sentence[sentence_idx]
-                if token_idx_in_sentence < len(mwe_column):
-                    parts[10] = mwe_column[token_idx_in_sentence]
-                    token_idx_in_sentence += 1
+            # Regular token
+            token_idx += 1
+            current_sent_idx = sentence_idx + 1
+            if current_sent_idx < len(mwe_columns_by_sentence) and token_idx < len(mwe_columns_by_sentence[current_sent_idx]):
+                parts[10] = mwe_columns_by_sentence[current_sent_idx][token_idx]
+            else:
+                parts[10] = '*'
             
             f_out.write('\t'.join(parts) + '\n')
     
@@ -416,7 +464,9 @@ if __name__ == '__main__':
     parser.add_argument('--focal_model', type=str, required=True, help='Path to Focal Loss model (best_model.pt)')
     parser.add_argument('--input', type=str, required=True, help='Input CUPT file')
     parser.add_argument('--output', type=str, required=True, help='Output CUPT file')
-    parser.add_argument('--no_fix_discontinuous', action='store_true', help='Disable discontinuous MWE post-processing')
+    parser.add_argument('--fix_discontinuous', action='store_true', help='Enable discontinuous MWE post-processing (NOT recommended)')
+    # Backward-compatibility: older scripts used this flag; default is now OFF.
+    parser.add_argument('--no_fix_discontinuous', action='store_true', help='(Deprecated) Disable discontinuous MWE post-processing')
     
     args = parser.parse_args()
     
@@ -425,5 +475,5 @@ if __name__ == '__main__':
         args.focal_model,
         args.input,
         args.output,
-        fix_discontinuous=not args.no_fix_discontinuous
+        fix_discontinuous=(args.fix_discontinuous and not args.no_fix_discontinuous)
     )

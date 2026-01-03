@@ -4,3 +4,44 @@ Continue training:
 + python workflow.py train FR --epochs 5 --batch_size 16 --pos --crf --loss focal --resume models/multilingual_FR/focalLoss-pos-crf/best_model.pt
 + python workflow.py train FR --epochs 5 --batch_size 16 --pos --crf --resume models/multilingual_FR/pos-crf/best_model.pt
 python workflow.py train FR --epochs 5 --batch_size 16 --pos --resume models/multilingual_FR/pos/best_model.pt
+
+---------------------
+
+10 Epoch Training Commands:
+
+--- SINGLE LANGUAGE PERFORMANCES (FR) ---
+
++1. POS + CRF
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --pos --crf --output models/FR_pos_crf
++2. POS
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --pos --output models/FR_pos
++3. BASE
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --output models/FR_base
++4. POS + CRF + FocalLoss
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --pos --crf --loss focal --output models/FR_pos_crf_focal
++5. CRF
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --crf --output models/FR_crf
+6. CRF + FocalLoss
+python workflow.py train FR --epochs 10 --batch_size 16 --sample_ratio 1.0 --multilingual --crf --loss focal --output models/FR_crf_focal
+
+--- MULTILINGUAL TRAINING (single model) ---
+# Training on Colab
+# 1. BASE
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_base"
+# 2. POS
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --pos --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_pos"
+# 3. POS + CRF
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --pos --crf --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_pos_crf"
++# 4. POS + CRF + FocalLoss
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --pos --crf --loss focal --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_pos_crf_focal"
+# 5. POS + CRF + LangTokens + FocalLoss
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --pos --crf --lang_tokens --loss focal --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_pos_crf_langtok_focal"
+
++# 6. CRF
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --crf --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_crf"
++# 7. CRF + FocalLoss
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --crf --loss focal --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_crf_focal"
++++++# 8. CRF + LangTokens + FocalLoss
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --crf --lang_tokens --loss focal --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_crf_langtok_focal"
++# 9. CRF + LangTokens
+# python workflow.py train FR SV EL FA JA --epochs 10 --batch_size 100 --multilingual --crf --lang_tokens --model_name "/content/drive/MyDrive/colab-models/nlp-parseme/bert-base-multilingual-cased" --output "/content/drive/MyDrive/colab-models/nlp-parseme/multi5_crf_langtok"

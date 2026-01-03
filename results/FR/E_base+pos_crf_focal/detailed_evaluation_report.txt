@@ -6,9 +6,9 @@
 -------------------------------------------------------
 LANGUAGE   | MWE F1     | TOK F1    
 -------------------------------------------------------
-FR         | 0.6759     | 0.7808
+FR         | 0.6916     | 0.7853
 -------------------------------------------------------
-MACRO AVG  | 0.6759     | 0.7808
+MACRO AVG  | 0.6916     | 0.7853
 
 2. CATEGORY DIFFICULTY (Averages across all languages)
 --------------------------------------------------------------------------------
@@ -16,33 +16,33 @@ CATEGORY        | MWE AVG  | TOK AVG  | BEST LANG (MWE)
 --------------------------------------------------------------------------------
 LVC.cause       | 0.0000   | 0.0000   | FR (0.00)
 NV.LVC.full     | 0.0000   | 0.0000   | FR (0.00)
-VID             | 0.4138   | 0.6364   | FR (0.41)
-AdjID           | 0.4667   | 0.5479   | FR (0.47)
-LVC.full        | 0.5155   | 0.6465   | FR (0.52)
-DetID           | 0.5714   | 0.7353   | FR (0.57)
-IRV             | 0.6222   | 0.6364   | FR (0.62)
-NID             | 0.6398   | 0.7028   | FR (0.64)
+VID             | 0.3248   | 0.4820   | FR (0.32)
+AdjID           | 0.4828   | 0.5714   | FR (0.48)
+LVC.full        | 0.5652   | 0.6736   | FR (0.57)
+DetID           | 0.6207   | 0.7941   | FR (0.62)
+NID             | 0.6584   | 0.7005   | FR (0.66)
 PronID          | 0.6667   | 0.5000   | FR (0.67)
-AdvID           | 0.6725   | 0.7705   | FR (0.67)
-NV.VID          | 0.9000   | 0.9032   | FR (0.90)
-AdpID           | 0.9280   | 0.9278   | FR (0.93)
+IRV             | 0.7111   | 0.7111   | FR (0.71)
+AdvID           | 0.7257   | 0.8000   | FR (0.73)
+NV.VID          | 0.8000   | 0.8667   | FR (0.80)
+AdpID           | 0.8430   | 0.9205   | FR (0.84)
 ConjID          | 0.9677   | 0.9730   | FR (0.97)
 
 3. CONTINUITY & TOKEN COUNT STATISTICS
 --------------------------------------------------
 TYPE                 | MWE AVG    | TOK AVG   
 --------------------------------------------------
-Continuous           | 0.7082     | 0.0000
-Discontinuous        | 0.5565     | 0.0000
-Multi-token          | 0.7081     | 0.0000
-Single-token         | 0.2892     | 0.0000
+Continuous           | 0.7284     | 0.0000
+Discontinuous        | 0.5641     | 0.0000
+Multi-token          | 0.7117     | 0.0000
+Single-token         | 0.3939     | 0.0000
 
 4. DETAILED BREAKDOWN PER LANGUAGE
 ============================================================
 
 --- FR ANALYSIS ---
-Global MWE F1: 0.6759
-Global Tok F1: 0.7808
+Global MWE F1: 0.6916
+Global Tok F1: 0.7853
 Top & Bottom Categories (Based on MWE Scores):
-  Top 3:    ConjID=0.9677, AdpID=0.928, NV.VID=0.9
-  Bottom 3: VID=0.4138, LVC.cause=0.0, NV.LVC.full=0.0
+  Top 3:    ConjID=0.9677, AdpID=0.843, NV.VID=0.8
+  Bottom 3: VID=0.3248, LVC.cause=0.0, NV.LVC.full=0.0

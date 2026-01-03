@@ -1,0 +1,92 @@
+============================================================
+          DETAILED MULTILINGUAL EVALUATION REPORT           
+============================================================
+
+1. GLOBAL RANKING (Sorted by MWE F1)
+-------------------------------------------------------
+LANGUAGE   | MWE F1     | TOK F1    
+-------------------------------------------------------
+FA         | 0.7965     | 0.8540
+SV         | 0.7323     | 0.7871
+FR         | 0.6736     | 0.7872
+EL         | 0.6338     | 0.7220
+JA         | 0.6331     | 0.6741
+-------------------------------------------------------
+MACRO AVG  | 0.6939     | 0.7649
+
+2. CATEGORY DIFFICULTY (Averages across all languages)
+--------------------------------------------------------------------------------
+CATEGORY        | MWE AVG  | TOK AVG  | BEST LANG (MWE)
+--------------------------------------------------------------------------------
+LVC.cause       | 0.0000   | 0.0000   | FR (0.00)
+AV.IRV          | 0.0000   | 0.0000   | SV (0.00)
+AV.IVPC.full    | 0.0000   | 0.0000   | SV (0.00)
+AV.IVPC.semi    | 0.0000   | 0.0000   | SV (0.00)
+AV.LVC.full     | 0.0000   | 0.0000   | SV (0.00)
+NV.IVPC.full    | 0.0000   | 0.0000   | SV (0.00)
+NV.IVPC.semi    | 0.0000   | 0.0000   | SV (0.00)
+AV.VID          | 0.0000   | 0.0000   | FA (0.00)
+IntjID          | 0.0000   | 0.0000   | FA (0.00)
+MVC             | 0.0000   | 0.0000   | JA (0.00)
+NV.MVC          | 0.0000   | 0.0000   | JA (0.00)
+NV.LVC.full     | 0.1071   | 0.1351   | FA (0.21)
+IVPC.semi       | 0.1143   | 0.1449   | SV (0.23)
+NV.VID          | 0.2083   | 0.2041   | FR (0.62)
+VID             | 0.2705   | 0.4073   | SV (0.42)
+IVPC.full       | 0.3278   | 0.3310   | FA (0.50)
+AdjID           | 0.3579   | 0.3599   | SV (1.00)
+DetID           | 0.5021   | 0.5989   | FA (0.83)
+AdvID           | 0.5416   | 0.6168   | SV (0.76)
+NID             | 0.5634   | 0.5817   | EL (0.77)
+AdpID           | 0.5754   | 0.5980   | FR (0.82)
+PronID          | 0.5891   | 0.6505   | SV (0.92)
+ConjID          | 0.6427   | 0.6614   | EL (0.90)
+LVC.full        | 0.6514   | 0.6953   | JA (0.80)
+IRV             | 0.6662   | 0.6875   | SV (0.79)
+
+3. CONTINUITY & TOKEN COUNT STATISTICS
+--------------------------------------------------
+TYPE                 | MWE AVG    | TOK AVG   
+--------------------------------------------------
+Continuous           | 0.7170     | 0.0000
+Discontinuous        | 0.4619     | 0.0000
+Multi-token          | 0.6518     | 0.0000
+Single-token         | 0.5105     | 0.0000
+
+4. DETAILED BREAKDOWN PER LANGUAGE
+============================================================
+
+--- FR ANALYSIS ---
+Global MWE F1: 0.6736
+Global Tok F1: 0.7872
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    ConjID=0.8966, AdpID=0.8226, AdvID=0.6612
+  Bottom 3: AdjID=0.1818, LVC.cause=0.0, NV.LVC.full=0.0
+
+--- SV ANALYSIS ---
+Global MWE F1: 0.7323
+Global Tok F1: 0.7871
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    AdjID=1.0, PronID=0.9231, DetID=0.8
+  Bottom 3: NV.IVPC.full=0.0, NV.IVPC.semi=0.0, NV.VID=0.0
+
+--- EL ANALYSIS ---
+Global MWE F1: 0.6338
+Global Tok F1: 0.7220
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    ConjID=0.9, NID=0.7692, LVC.full=0.52
+  Bottom 3: AdpID=0.0, IVPC.full=0.0, LVC.cause=0.0
+
+--- FA ANALYSIS ---
+Global MWE F1: 0.7965
+Global Tok F1: 0.8540
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    DetID=0.8333, PronID=0.8333, AdpID=0.8023
+  Bottom 3: IntjID=0.0, NV.IVPC.full=0.0, NV.VID=0.0
+
+--- JA ANALYSIS ---
+Global MWE F1: 0.6331
+Global Tok F1: 0.6741
+Top & Bottom Categories (Based on MWE Scores):
+  Top 3:    LVC.full=0.8, AdpID=0.6809, NID=0.2143
+  Bottom 3: MVC=0.0, NV.MVC=0.0, PronID=0.0
