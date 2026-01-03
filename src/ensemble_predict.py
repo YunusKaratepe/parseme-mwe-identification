@@ -171,17 +171,36 @@ def predict_with_probabilities(
         category_probs = torch.softmax(outputs['category_logits'], dim=-1)  # [1, seq_len, num_categories]
     
     # Extract word-level probabilities (skip special tokens and subwords)
+    # NOTE: MWETokenizer prepends a language token as an extra "word" when use_lang_tokens=True.
+    # For ensembling, we must return probabilities aligned to the *original* `tokens` list.
     word_ids = tokenized.word_ids(batch_index=0)
     word_bio_probs = []
     word_category_probs = []
     previous_word_idx = None
-    
+
     for idx, word_idx in enumerate(word_ids):
         if word_idx is not None and word_idx != previous_word_idx:
             word_bio_probs.append(bio_probs[0, idx].cpu().numpy())
             word_category_probs.append(category_probs[0, idx].cpu().numpy())
             previous_word_idx = word_idx
-    
+
+    # Drop the prepended language token "word" if present.
+    if getattr(tokenizer, 'use_lang_tokens', False) and language:
+        # With language tokens, MWETokenizer shifts word indices by +1 and adds one extra word.
+        if len(word_bio_probs) == len(tokens) + 1:
+            word_bio_probs = word_bio_probs[1:]
+            word_category_probs = word_category_probs[1:]
+        elif len(word_bio_probs) > len(tokens):
+            # Conservative fallback: drop first and then clip.
+            word_bio_probs = word_bio_probs[1:len(tokens) + 1]
+            word_category_probs = word_category_probs[1:len(tokens) + 1]
+
+    # Final safety: enforce equal length across models.
+    if len(word_bio_probs) != len(tokens):
+        clip_len = min(len(word_bio_probs), len(tokens))
+        word_bio_probs = word_bio_probs[:clip_len]
+        word_category_probs = word_category_probs[:clip_len]
+
     return np.array(word_bio_probs), np.array(word_category_probs)
 
 
