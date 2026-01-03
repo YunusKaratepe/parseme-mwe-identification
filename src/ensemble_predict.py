@@ -52,32 +52,56 @@ def load_ensemble_model(model_path: str, device: torch.device) -> Tuple:
         print(f"  WARNING: Model path '{model_name}' not found, using 'bert-base-multilingual-cased'")
         model_name = 'bert-base-multilingual-cased'
     
+    # Initialize tokenizer first (needed to get correct vocab size before loading state)
+    tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
+    if use_lang_tokens:
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
+        else:
+            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
+    else:
+        if os.path.exists(tokenizer_path):
+            tokenizer = MWETokenizer(tokenizer_path)
+        else:
+            tokenizer = MWETokenizer(model_name)
+
     # Initialize model
     model = MWEIdentificationModel(
-        model_name, 
-        num_labels=len(label_to_id), 
+        model_name,
+        num_labels=len(label_to_id),
         num_categories=len(category_to_id),
         num_pos_tags=len(pos_to_id) if pos_to_id else 18,
         use_pos=use_pos,
         loss_type=loss_type,
         use_crf=use_crf
     )
-    model.load_state_dict(checkpoint['model_state_dict'])
-    
-    # Initialize tokenizer
-    if use_lang_tokens:
-        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
-        if os.path.exists(tokenizer_path):
-            tokenizer = MWETokenizer(tokenizer_path, use_lang_tokens=True)
-        else:
-            tokenizer = MWETokenizer(model_name, use_lang_tokens=True)
-        model.transformer.resize_token_embeddings(len(tokenizer.get_tokenizer()))
-    else:
-        tokenizer_path = os.path.join(os.path.dirname(model_path), 'tokenizer')
-        if os.path.exists(tokenizer_path):
-            tokenizer = MWETokenizer(tokenizer_path)
-        else:
-            tokenizer = MWETokenizer(model_name)
+
+    # Resize token embeddings BEFORE loading state dict if needed.
+    # This is critical for language-token checkpoints where vocab size differs from the base model.
+    state_dict = checkpoint['model_state_dict']
+    expected_vocab_size = None
+    emb_key = 'transformer.embeddings.word_embeddings.weight'
+    if emb_key in state_dict and hasattr(state_dict[emb_key], 'shape'):
+        expected_vocab_size = int(state_dict[emb_key].shape[0])
+
+    tokenizer_vocab_size = None
+    try:
+        tokenizer_vocab_size = len(tokenizer.get_tokenizer())
+    except Exception:
+        tokenizer_vocab_size = None
+
+    if expected_vocab_size is not None:
+        # If tokenizer folder is missing but vocab is non-standard, fail fast to avoid silent mismatches.
+        if (not os.path.exists(tokenizer_path)) and (tokenizer_vocab_size is not None) and (expected_vocab_size != tokenizer_vocab_size):
+            raise RuntimeError(
+                "Checkpoint vocab size does not match the loaded tokenizer. "
+                f"expected_vocab_size={expected_vocab_size}, tokenizer_vocab_size={tokenizer_vocab_size}. "
+                "Make sure the checkpoint directory contains the matching 'tokenizer/' folder."
+            )
+        if hasattr(model, 'transformer') and hasattr(model.transformer, 'resize_token_embeddings'):
+            model.transformer.resize_token_embeddings(expected_vocab_size)
+
+    model.load_state_dict(state_dict)
     
     model.to(device)
     model.eval()
