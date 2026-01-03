@@ -84,7 +84,7 @@ def predict_cupt_file(
     input_file: str,
     output_file: str,
     device: torch.device = None,
-    fix_discontinuous: bool = True
+    fix_discontinuous: bool = False
 ):
     """
     Predict MWE annotations for a CUPT file
@@ -94,7 +94,7 @@ def predict_cupt_file(
         input_file: Path to input .cupt file (with empty MWE column)
         output_file: Path to output .cupt file (with predicted MWE annotations)
         device: torch device
-        fix_discontinuous: Apply heuristic stitching for discontinuous MWEs (default: True)
+        fix_discontinuous: Apply heuristic stitching for discontinuous MWEs (default: False, degrades performance)
     """
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -303,9 +303,9 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, required=True, help='Path to model checkpoint')
     parser.add_argument('--input', type=str, required=True, help='Path to input .cupt file')
     parser.add_argument('--output', type=str, required=True, help='Path to output .cupt file')
-    parser.add_argument('--no_fix_discontinuous', action='store_true',
-                       help='Disable discontinuous MWE post-processing (enabled by default)')
+    parser.add_argument('--fix_discontinuous', action='store_true',
+                       help='Enable discontinuous MWE stitching (NOT recommended, degrades performance)')
     
     args = parser.parse_args()
     
-    predict_cupt_file(args.model, args.input, args.output, fix_discontinuous=not args.no_fix_discontinuous)
+    predict_cupt_file(args.model, args.input, args.output, fix_discontinuous=args.fix_discontinuous)
